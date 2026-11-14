@@ -1,0 +1,227 @@
+"use client";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { AI_OFF_NOTE, AI_READY, generateQuestions } from "@/lib/ai";
+import { KEYS, LEVEL, SUBJECTS } from "@/lib/constants";
+import { loadDrafts, loadQuizzes, saveDrafts, saveQuizzes, toast } from "@/lib/storage";
+import type { Draft } from "@/lib/types";
+
+type Src = "file" | "topic" | "text";
+const isValid = (d: Draft) => d.q.trim() !== "" && d.choices.every((c) => c.trim() !== "");
+
+export default function StudioPage() {
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState<"ai" | "manual">("ai");
+  const [src, setSrc] = useState<Src>("topic");
+  const [subject, setSubject] = useState(SUBJECTS[0]);
+  const [manSubject, setManSubject] = useState(SUBJECTS[0]);
+  const [count, setCount] = useState(5);
+  const [level, setLevel] = useState<"mix" | "1" | "2" | "3">("mix");
+  const [topic, setTopic] = useState("ระบบสุริยะและการเคลื่อนที่ของโลก");
+  const [text, setText] = useState("");
+  const [fileText, setFileText] = useState("");
+  const [fileInfo, setFileInfo] = useState("ไฟล์ PDF, DOCX และ PPT จะรองรับในระยะที่ 2 ตอนนี้ให้คัดลอกข้อความมาวางแทน");
+  const [busy, setBusy] = useState(false);
+  const [title, setTitle] = useState("ทบทวนบทเรียน");
+  const [publishErr, setPublishErr] = useState("");
+  const [publishedPin, setPublishedPin] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setDrafts(loadDrafts()); setLoaded(true); }, []);
+  useEffect(() => { if (loaded) saveDrafts(drafts); }, [drafts, loaded]);
+
+  const update = (i: number, patch: Partial<Draft>) =>
+    setDrafts((ds) => ds.map((d, j) => {
+      if (j !== i) return d;
+      const next = { ...d, ...patch };
+      if (next.approved && !isValid(next)) next.approved = false; // editing a field empty un-approves it
+      return next;
+    }));
+
+  function addBlank() {
+    setDrafts((ds) => [...ds, { topic: manSubject, level: 1, q: "", choices: ["", "", "", ""], answer: 0, explain: "", approved: false, src: "manual" }]);
+    setTimeout(() => {
+      const areas = listRef.current?.querySelectorAll<HTMLTextAreaElement>("textarea[data-q]");
+      areas?.[areas.length - 1]?.focus();
+    }, 0);
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    setFileText("");
+    if (!f) return;
+    if (!/\.(txt|md)$/i.test(f.name)) { setFileInfo("ตอนนี้รองรับเฉพาะ .txt และ .md ไฟล์ PDF/DOCX ให้คัดลอกข้อความมาวางแทน"); return; }
+    const r = new FileReader();
+    r.onload = () => { const t = String(r.result).slice(0, 8000); setFileText(t); setFileInfo(`อ่านไฟล์ ${f.name} แล้ว (${t.length.toLocaleString()} ตัวอักษร)`); };
+    r.readAsText(f);
+  }
+
+  async function runAI() {
+    const content = src === "topic" ? topic.trim() : src === "text" ? text.trim().slice(0, 6000) : fileText;
+    if (content.length < 3) { toast("กรุณาใส่หัวข้อหรือเนื้อหาก่อน"); return; }
+    setBusy(true);
+    try {
+      const qs = await generateQuestions({ subject, count, level, content });
+      setDrafts((ds) => [...ds, ...qs.map((q) => ({ ...q, topic: subject, approved: false, src: "ai" as const }))]);
+      toast(`AI ร่างข้อสอบ ${qs.length} ข้อแล้ว กรุณาตรวจและอนุมัติทีละข้อ`);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "สร้างข้อสอบไม่สำเร็จ");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function publish() {
+    const ok = drafts.filter((d) => d.approved && isValid(d));
+    setPublishErr("");
+    if (ok.length < 3) { setPublishErr(`ต้องมีคำถามที่อนุมัติแล้วอย่างน้อย 3 ข้อ (ตอนนี้ ${ok.length} ข้อ) ข้อที่ยังไม่ได้ตรวจจะไม่ถูกเผยแพร่`); return; }
+    const all = loadQuizzes();
+    let pin: string;
+    do { pin = String(Math.floor(100000 + Math.random() * 900000)); } while (all.some((q) => q.pin === pin));
+    all.push({ pin, title: title.trim() || "แบบทดสอบใหม่", questions: ok.map(({ topic, level, q, choices, answer, explain }) => ({ topic, level, q, choices, answer, explain })) });
+    saveQuizzes(all);
+    const pending = drafts.length - ok.length;
+    setDrafts((ds) => ds.filter((d) => !(d.approved && isValid(d))));
+    setPublishedPin(pin);
+    toast(`เผยแพร่ ${ok.length} ข้อแล้ว` + (pending ? ` (ข้อที่ยังไม่อนุมัติ ${pending} ข้อยังอยู่ในร่าง)` : ""));
+  }
+
+  const approved = drafts.filter((d) => d.approved).length;
+
+  return (
+    <section className="view">
+      <div className="studio">
+        <aside className="side" aria-label="เมนูผู้สอน">
+          <div className="s-item">แดชบอร์ด</div>
+          <div className="s-item on">สร้าง Quiz</div>
+          <div className="s-item">คลังข้อสอบ</div>
+          <div className="s-item">รายงานผล</div>
+          <div className="s-item">ห้องเรียน</div>
+          <p className="s-note">ตอนนี้เปิดใช้เฉพาะเมนู &quot;สร้าง Quiz&quot; ส่วนเมนูอื่นจะมาในระยะที่ 5</p>
+        </aside>
+
+        <div className="view" style={{ gap: 18 }}>
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div><h2 style={{ fontSize: 26 }}>สร้างแบบทดสอบ</h2><p className="muted small">ร่างคำถาม ตรวจแก้ อนุมัติ แล้วเผยแพร่เป็นห้องเกม</p></div>
+            <div className="tabs" role="tablist">
+              <button role="tab" aria-selected={tab === "manual"} className={tab === "manual" ? "on" : ""} onClick={() => setTab("manual")}>สร้างเอง</button>
+              <button role="tab" aria-selected={tab === "ai"} className={tab === "ai" ? "on" : ""} onClick={() => setTab("ai")}>AI สร้างจากเนื้อหา</button>
+            </div>
+          </div>
+
+          {tab === "ai" ? (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <h3 style={{ fontSize: 18 }}>AI สร้างข้อสอบให้อัตโนมัติ</h3>
+                <p className="muted small">เลือกแหล่งเนื้อหา AI จะร่างคำถาม ตัวเลือก เฉลย และคำอธิบาย คุณต้องตรวจและกดอนุมัติทุกข้อก่อนเผยแพร่</p>
+              </div>
+              <div className="grid src3">
+                {([["file", "อัปโหลดไฟล์", ".txt หรือ .md"], ["topic", "ใส่หัวข้อ", "เช่น ระบบสุริยะ"], ["text", "วางข้อความ", "จากบทเรียนหรือชีต"]] as const).map(([k, t, d]) => (
+                  <button type="button" key={k} className={"src" + (src === k ? " on" : "")} onClick={() => setSrc(k)}>
+                    <b>{t}</b><span className="small muted">{d}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
+                <label className="fld">วิชา
+                  <select id="aiSubject" value={subject} onChange={(e) => setSubject(e.target.value)}>{SUBJECTS.map((s) => <option key={s}>{s}</option>)}</select>
+                </label>
+                <label className="fld">จำนวนข้อ
+                  <select id="aiCount" value={count} onChange={(e) => setCount(+e.target.value)}>{[3, 5, 8].map((n) => <option key={n} value={n}>{n}</option>)}</select>
+                </label>
+                <label className="fld">ระดับความยาก
+                  <select id="aiLevel" value={level} onChange={(e) => setLevel(e.target.value as typeof level)}>
+                    <option value="mix">คละระดับ (สำหรับ Adaptive)</option><option value="1">ง่าย</option><option value="2">ปานกลาง</option><option value="3">ยาก</option>
+                  </select>
+                </label>
+              </div>
+              {src === "topic" && <label className="fld">หัวข้อ<input type="text" id="aiTopic" value={topic} onChange={(e) => setTopic(e.target.value)} /></label>}
+              {src === "text" && <label className="fld">เนื้อหาบทเรียน<textarea id="aiText" value={text} onChange={(e) => setText(e.target.value)} placeholder="วางเนื้อหาบทเรียนที่นี่ (สูงสุดประมาณ 6,000 ตัวอักษร)" /></label>}
+              {src === "file" && (
+                <div>
+                  <label className="fld">ไฟล์เนื้อหา (.txt, .md)<input type="file" id="aiFile" accept=".txt,.md,text/plain,text/markdown" onChange={onFile} /></label>
+                  <p className="small muted" style={{ marginTop: 6 }}>{fileInfo}</p>
+                </div>
+              )}
+              <div className="row">
+                <button className="btn btn-primary" onClick={runAI} disabled={!AI_READY || busy}>{busy ? "AI กำลังร่างข้อสอบ…" : "สร้างด้วย AI"}</button>
+                <span className={"ai-status" + (AI_READY ? " ok" : "")}>{AI_READY ? "AI พร้อมใช้งาน" : AI_OFF_NOTE}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <h3 style={{ fontSize: 18 }}>สร้างคำถามเอง</h3>
+              <p className="muted small">เพิ่มคำถามเปล่า กรอกคำถาม ตัวเลือก 4 ข้อ เลือกเฉลย แล้วเขียนคำอธิบายสั้นๆ ที่จะแสดงหลังผู้เรียนตอบ</p>
+              <div className="row">
+                <label className="fld" style={{ flex: "1 1 200px" }}>วิชา
+                  <select id="manSubject" value={manSubject} onChange={(e) => setManSubject(e.target.value)}>{SUBJECTS.map((s) => <option key={s}>{s}</option>)}</select>
+                </label>
+                <button className="btn btn-primary" style={{ alignSelf: "end" }} onClick={addBlank}>+ เพิ่มคำถาม</button>
+              </div>
+            </div>
+          )}
+
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <h3 style={{ fontSize: 18 }}>ร่างคำถาม <span className="pill num">{drafts.length} ข้อ</span></h3>
+            {drafts.length > 0 && <span className="small muted">อนุมัติแล้ว {approved} จาก {drafts.length} ข้อ</span>}
+          </div>
+
+          <div className="grid" style={{ gap: 12 }} ref={listRef}>
+            {drafts.length === 0 && (
+              <div className="card" style={{ boxShadow: "none" }}>
+                <p className="muted">ยังไม่มีร่างคำถาม เปิดแท็บ &quot;สร้างเอง&quot; เพื่อเพิ่มทีละข้อ หรือให้ AI สร้างจากหัวข้อ (ระยะที่ 2)</p>
+              </div>
+            )}
+            {drafts.map((d, i) => (
+              <div className={"draft" + (d.approved ? " approved" : "")} key={i}>
+                <div className="draft-head">
+                  <div className="row" style={{ gap: 8 }}>
+                    <b style={{ fontFamily: "var(--f-display)" }}>ข้อ {i + 1}</b>
+                    <span className="pill">{d.topic}</span>
+                    {d.src === "ai" && <span className="pill warn">ร่างโดย AI</span>}
+                  </div>
+                  <div className="row" style={{ gap: 8 }}>
+                    <select aria-label="ระดับความยาก" style={{ width: "auto", padding: "6px 10px" }} value={d.level} onChange={(e) => update(i, { level: +e.target.value })}>
+                      {[1, 2, 3].map((l) => <option key={l} value={l}>{LEVEL[l]}</option>)}
+                    </select>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setDrafts((ds) => ds.filter((_, j) => j !== i))}>ลบ</button>
+                  </div>
+                </div>
+                <textarea data-q rows={2} placeholder="พิมพ์คำถาม" style={{ minHeight: 56 }} aria-label="คำถาม" value={d.q} onChange={(e) => update(i, { q: e.target.value })} />
+                <div className="choice-edit">
+                  {d.choices.map((c, j) => (
+                    <label key={j} className={d.answer === j ? "correct" : ""}>
+                      <input type="radio" name={`ans${i}`} checked={d.answer === j} onChange={() => update(i, { answer: j })} aria-label="ตั้งเป็นคำตอบที่ถูก" />
+                      <input type="text" value={c} placeholder={`ตัวเลือก ${KEYS[j]}`}
+                        onChange={(e) => update(i, { choices: d.choices.map((x, k) => (k === j ? e.target.value : x)) })} />
+                    </label>
+                  ))}
+                </div>
+                <textarea rows={2} placeholder="คำอธิบายเฉลย (แสดงหลังผู้เรียนตอบ)" style={{ minHeight: 56 }} aria-label="คำอธิบาย" value={d.explain} onChange={(e) => update(i, { explain: e.target.value })} />
+                <label className="approve">
+                  <input type="checkbox" checked={d.approved} onChange={(e) => {
+                    if (e.target.checked && !isValid(d)) { toast("กรอกคำถามและตัวเลือกให้ครบ 4 ข้อก่อนอนุมัติ"); return; }
+                    update(i, { approved: e.target.checked });
+                  }} /> ตรวจแล้ว อนุมัติให้ใช้ข้อนี้
+                </label>
+              </div>
+            ))}
+          </div>
+
+          <div className="card publish-bar">
+            <label className="fld" style={{ flex: "1 1 260px" }}>ชื่อชุดข้อสอบ<input type="text" id="quizTitle" value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+            <button className="btn btn-primary" onClick={publish}>เผยแพร่และสร้าง PIN</button>
+            <p className="err" style={{ flexBasis: "100%" }}>{publishErr}</p>
+            {publishedPin && (
+              <div style={{ flexBasis: "100%", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                <div><p className="small muted">PIN ห้องเกม</p><p className="pin-big num">{publishedPin}</p></div>
+                <Link className="btn btn-soft" href="/join">ไปหน้าเข้าร่วมเกม</Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

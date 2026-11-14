@@ -1,0 +1,1069 @@
+<title>QUIZVERSE</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,500;0,600;0,700;0,800;1,800&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky top bar + one view at a time (hash-routed), cards on a soft lavender ground, matching the QUIZVERSE mockup */
+:root{
+  --bg:#F4F1FE; --surface:#FFFFFF; --surface-2:#EEE9FD; --ink:#1D1838; --muted:#5F5A7D; --line:#DDD5F7;
+  --violet:#6A3DE8; --indigo:#3A4BD8; --sky:#1F9FE0; --on-accent:#FFFFFF;
+  --ok:#1C9A52; --ok-bg:#E3F6EA; --bad:#D63846; --bad-bg:#FCE8EA; --warn:#B87400; --warn-bg:#FFF3D6;
+  --c1:#E0434F; --c2:#2F68E8; --c3:#E09A00; --c4:#22A058;
+  --hero-a:#6A3DE8; --hero-b:#3A4BD8; --hero-c:#5A8CF5;
+  --shadow:0 10px 30px -12px rgba(76,48,170,.28);
+  --f-display:"Prompt","Noto Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12101E; --surface:#1C1930; --surface-2:#262143; --ink:#EEEAFB; --muted:#A8A2C8; --line:#352F58;
+  --violet:#9C7EFF; --indigo:#7383FF; --sky:#4CC3F5; --on-accent:#FFFFFF;
+  --ok:#45C77E; --ok-bg:#163526; --bad:#FF6B76; --bad-bg:#3A1C24; --warn:#F2B53C; --warn-bg:#3A2E12;
+  --hero-a:#4F2BC2; --hero-b:#2A36A8; --hero-c:#3C64C9;
+  --shadow:0 10px 30px -12px rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12101E; --surface:#1C1930; --surface-2:#262143; --ink:#EEEAFB; --muted:#A8A2C8; --line:#352F58;
+  --violet:#9C7EFF; --indigo:#7383FF; --sky:#4CC3F5; --on-accent:#FFFFFF;
+  --ok:#45C77E; --ok-bg:#163526; --bad:#FF6B76; --bad-bg:#3A1C24; --warn:#F2B53C; --warn-bg:#3A2E12;
+  --hero-a:#4F2BC2; --hero-b:#2A36A8; --hero-c:#3C64C9;
+  --shadow:0 10px 30px -12px rgba(0,0,0,.6); color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.6}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+h1,h2,h3,h4{font-family:var(--f-display);line-height:1.25;margin:0;text-wrap:balance}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.wrap{max-width:1140px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;padding-block:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.brand-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--violet),var(--indigo));display:grid;place-items:center;color:var(--on-accent);font:800 italic 22px var(--f-display)}
+.brand-name{font:800 italic 21px var(--f-display);letter-spacing:.2px;background:linear-gradient(90deg,var(--violet),var(--indigo));-webkit-background-clip:text;background-clip:text;color:transparent}
+.brand-tag{font-size:11px;color:var(--muted);letter-spacing:.6px;display:block;margin-top:-4px}
+.nav{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+.nav a{padding:7px 12px;border-radius:999px;text-decoration:none;color:var(--muted);font-weight:500;font-size:14px}
+.nav a:hover{background:var(--surface-2);color:var(--ink)}
+.nav a.on{background:var(--surface-2);color:var(--violet);font-weight:600}
+.me-chip{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--sky),var(--violet));color:var(--on-accent);display:grid;place-items:center;font:700 14px var(--f-display);flex:none}
+
+main{padding-block:28px 56px}
+.view{display:flex;flex-direction:column;gap:22px}
+
+/* generic */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:22px;box-shadow:var(--shadow)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.eyebrow{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--violet);font-weight:600}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:12px;padding:11px 18px;font-weight:600;cursor:pointer;text-decoration:none;transition:transform .12s ease, filter .12s ease}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:linear-gradient(135deg,var(--violet),var(--indigo));color:var(--on-accent)}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-ghost{background:var(--surface);color:var(--violet);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--violet)}
+.btn-soft{background:var(--surface-2);color:var(--violet)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-sm{padding:7px 12px;font-size:13px;border-radius:10px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;gap:18px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--violet)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.bad{background:var(--bad-bg);color:var(--bad)} .pill.warn{background:var(--warn-bg);color:var(--warn)}
+label.fld{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--muted)}
+input[type=text],select,textarea{width:100%;border:1.5px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;background:var(--surface);font-weight:400;color:var(--ink)}
+input[type=text]:focus,select:focus,textarea:focus{border-color:var(--violet);outline:none}
+textarea{resize:vertical;min-height:90px}
+.num{font-variant-numeric:tabular-nums}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:12px;font-weight:500;z-index:50;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+.example-note{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--warn-bg);color:var(--warn);border-radius:var(--r-md);padding:10px 14px;font-size:13px;font-weight:500}
+
+/* HOME */
+.hero{border-radius:28px;padding:40px clamp(20px,4vw,48px);background:radial-gradient(120% 140% at 100% 0%,var(--hero-c) 0%,transparent 55%),linear-gradient(135deg,var(--hero-a),var(--hero-b));color:#fff;display:grid;grid-template-columns:1.1fr .9fr;gap:32px;align-items:center;overflow:hidden;position:relative}
+.hero h1{font:800 italic clamp(40px,7vw,72px)/1 var(--f-display);letter-spacing:.5px}
+.hero .lead{font-size:clamp(16px,2vw,19px);margin-top:14px;max-width:30ch;opacity:.95}
+.hero .tagline{margin-top:6px;font-size:13px;letter-spacing:2px;opacity:.8}
+.hero .row{margin-top:26px}
+.hero .btn-white{background:#fff;color:#4A2BC2}
+.hero .btn-outline{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.6)}
+.hero-demo{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:18px;backdrop-filter:blur(6px);display:flex;flex-direction:column;gap:12px;min-width:0}
+.hero-demo .q{background:#fff;color:#1D1838;border-radius:14px;padding:14px 16px;font:600 16px var(--f-display)}
+.hero-demo .opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hero-demo .opts span{border-radius:10px;padding:9px 10px;font-size:13px;font-weight:600;color:#fff}
+.hero-demo .meta{display:flex;justify-content:space-between;font-size:12px;opacity:.9}
+.feat3{grid-template-columns:repeat(3,1fr)}
+.feat{display:flex;gap:14px;align-items:flex-start}
+.feat .ico{flex:none;width:44px;height:44px;border-radius:12px;background:var(--surface-2);display:grid;place-items:center;color:var(--violet)}
+.feat h3{font-size:16px}
+.loop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-weight:600;font-size:14px}
+.loop span.step{background:var(--surface-2);color:var(--violet);padding:6px 12px;border-radius:999px}
+.loop .arr{color:var(--muted)}
+.innov{grid-template-columns:repeat(5,1fr)}
+.innov .card{padding:16px;display:flex;flex-direction:column;gap:6px;box-shadow:none}
+.innov .tag{font-size:11px;font-weight:600;color:var(--muted)}
+.innov h4{font-size:15px;color:var(--violet)}
+.how ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+
+/* STUDIO */
+.studio{display:grid;grid-template-columns:220px 1fr;gap:20px;align-items:start}
+.side{background:linear-gradient(180deg,var(--hero-b),var(--hero-a));color:#fff;border-radius:var(--r-lg);padding:16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:calc(80px + env(safe-area-inset-top,0px))}
+.side .s-item{padding:9px 12px;border-radius:10px;font-size:14px;opacity:.85}
+.side .s-item.on{background:rgba(255,255,255,.18);opacity:1;font-weight:600}
+.side .s-note{font-size:12px;opacity:.75;margin-top:10px;padding:0 4px}
+.tabs{display:inline-flex;background:var(--surface-2);border-radius:12px;padding:4px;gap:4px}
+.tabs button{border:0;background:transparent;padding:8px 16px;border-radius:9px;font-weight:600;color:var(--muted);cursor:pointer}
+.tabs button.on{background:linear-gradient(135deg,var(--violet),var(--indigo));color:var(--on-accent)}
+.src3{grid-template-columns:repeat(3,1fr);gap:12px}
+.src{border:1.5px dashed var(--line);border-radius:var(--r-md);padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+.src.on{border-style:solid;border-color:var(--violet);background:var(--surface-2)}
+.src button.pick{all:unset;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.src b{font-family:var(--f-display);font-size:14px}
+.ai-status{font-size:13px;padding:8px 12px;border-radius:10px;background:var(--surface-2);color:var(--muted)}
+.ai-status.ok{background:var(--ok-bg);color:var(--ok)}
+.draft{border:1.5px solid var(--line);border-radius:var(--r-md);padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
+.draft.approved{border-color:var(--ok)}
+.draft-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center}
+.choice-edit{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.choice-edit label{display:flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:10px;padding:4px 8px 4px 10px}
+.choice-edit label.correct{border-color:var(--ok);background:var(--ok-bg)}
+.choice-edit input[type=text]{border:0;padding:6px 4px;background:transparent}
+.choice-edit input[type=radio]{accent-color:var(--ok)}
+.approve{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;cursor:pointer}
+.approve input{width:18px;height:18px;accent-color:var(--ok)}
+.publish-bar{display:flex;gap:12px;flex-wrap:wrap;align-items:end}
+.pin-big{font:700 34px var(--f-display);letter-spacing:8px;color:var(--violet)}
+
+/* JOIN */
+.join{display:grid;grid-template-columns:minmax(0,440px) 1fr;gap:22px;align-items:start}
+.join-card{display:flex;flex-direction:column;gap:14px}
+.pin-input{font:700 30px var(--f-display)!important;letter-spacing:10px;text-align:center}
+.room{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 14px;border:1.5px solid var(--line);border-radius:var(--r-md);flex-wrap:wrap}
+.room b{font-family:var(--f-display)}
+.err{color:var(--bad);font-size:13px;font-weight:500;min-height:1.2em}
+
+/* ARENA */
+.arena-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.progress{flex:1 1 200px;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden;min-width:120px}
+.progress i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--sky));transition:width .3s}
+.timer{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font:700 20px var(--f-display);color:var(--violet);background:conic-gradient(var(--violet) var(--p,100%),var(--surface-2) 0);position:relative;flex:none}
+.timer::before{content:"";position:absolute;inset:6px;border-radius:50%;background:var(--surface)}
+.timer span{position:relative}
+.qcard{background:linear-gradient(135deg,var(--hero-a),var(--hero-b));color:#fff;border-radius:var(--r-lg);padding:28px;display:flex;flex-direction:column;gap:10px}
+.qcard h2{font-size:clamp(20px,3.2vw,28px);font-weight:600}
+.qmeta{display:flex;gap:8px;flex-wrap:wrap}
+.qmeta .pill{background:rgba(255,255,255,.18);color:#fff}
+.conf{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px}
+.conf button{border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted)}
+.conf button.on{border-color:var(--violet);color:var(--violet);background:var(--surface-2)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.choice{border:0;border-radius:var(--r-md);padding:18px 18px;min-height:76px;color:#fff;font:600 17px var(--f-display);text-align:left;cursor:pointer;display:flex;gap:12px;align-items:center;transition:transform .12s, opacity .2s}
+.choice:hover:not([disabled]){transform:translateY(-2px)}
+.choice .key{width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.25);display:grid;place-items:center;flex:none;font-size:15px}
+.choice[disabled]{cursor:default}
+.choice.dim{opacity:.35}
+.choice.right{outline:4px solid var(--ok);outline-offset:3px}
+.choice.picked-wrong{outline:4px solid var(--bad);outline-offset:3px}
+.ch0{background:var(--c1)} .ch1{background:var(--c2)} .ch2{background:var(--c3)} .ch3{background:var(--c4)}
+.feedback{border-radius:var(--r-lg);padding:20px;display:flex;flex-direction:column;gap:10px;border:1.5px solid var(--line);background:var(--surface)}
+.feedback.good{border-color:var(--ok)} .feedback.bad{border-color:var(--bad)}
+.feedback h3{font-size:19px}
+.ai-box{background:var(--surface-2);border-radius:var(--r-md);padding:14px 16px;white-space:pre-wrap;font-size:14px}
+.adapt{font-size:13px;font-weight:600}
+
+/* RESULT */
+.result{display:grid;grid-template-columns:1.3fr 1fr;gap:20px;align-items:stretch}
+.podium-wrap{background:linear-gradient(135deg,var(--hero-a),var(--hero-b));border-radius:var(--r-lg);padding:24px;color:#fff;display:flex;flex-direction:column;gap:18px;min-width:0}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;padding-top:10px}
+.pod{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;max-width:150px;min-width:0}
+.pod .who{font:600 14px var(--f-display);text-align:center;overflow-wrap:anywhere}
+.pod .pts{font-size:12px;opacity:.85}
+.pod .block{width:100%;border-radius:12px 12px 0 0;display:grid;place-items:center;font:800 30px var(--f-display);color:#fff}
+.pod.p1 .block{height:130px;background:linear-gradient(180deg,#F7B733,#E98E12)}
+.pod.p2 .block{height:95px;background:linear-gradient(180deg,#A6B3D8,#7D8BB8)}
+.pod.p3 .block{height:72px;background:linear-gradient(180deg,#E3A17A,#C07247)}
+.pod.me .who{background:#fff;color:#4A2BC2;padding:2px 10px;border-radius:999px}
+.lb{display:flex;flex-direction:column;gap:6px;background:rgba(255,255,255,.12);border-radius:14px;padding:10px}
+.lb div{display:flex;justify-content:space-between;padding:4px 8px;border-radius:8px;font-size:14px}
+.lb div.me{background:rgba(255,255,255,.22);font-weight:600}
+.summary{display:flex;flex-direction:column;gap:12px}
+.big-score{font:700 40px var(--f-display);color:var(--violet)}
+.srow{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.review{display:flex;flex-direction:column;gap:10px}
+.rv{border:1.5px solid var(--line);border-radius:var(--r-md);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.rv.wrong{border-left:5px solid var(--bad)} .rv.okk{border-left:5px solid var(--ok)}
+
+/* DNA */
+.dna{display:grid;grid-template-columns:240px 1fr;gap:20px;align-items:start}
+.profile{display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.profile .avatar{width:76px;height:76px;font-size:30px}
+.xpbar{width:100%;height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--violet),var(--sky))}
+.streak{display:flex;gap:8px;align-items:center;background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:8px 12px;font-weight:600;font-size:13px}
+.dna-main{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;min-width:0}
+.dna-main > *{min-width:0}
+.radar svg{width:100%;max-width:380px;height:auto;display:block;margin:0 auto}
+.radar text{fill:var(--muted);font-family:var(--f-body);font-size:12px}
+.sw{display:flex;flex-direction:column;gap:10px}
+.sw-box{border-radius:var(--r-md);padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.sw-box.ok{background:var(--ok-bg)} .sw-box.bad{background:var(--bad-bg)}
+.sw-box h4{font-size:14px}
+.sw-box.ok h4{color:var(--ok)} .sw-box.bad h4{color:var(--bad)}
+.sw-box ul{margin:0;padding-left:18px;font-size:14px}
+.bars{display:flex;flex-direction:column;gap:10px}
+.bar{display:grid;grid-template-columns:100px 1fr 46px;gap:10px;align-items:center;font-size:14px}
+.bar .track{height:10px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.bar .track i{display:block;height:100%;border-radius:99px}
+.rev-item{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;flex-wrap:wrap}
+.rev-item:last-child{border-bottom:0}
+.badges{display:flex;flex-wrap:wrap;gap:10px}
+.badge{display:flex;gap:10px;align-items:center;border:1.5px solid var(--line);border-radius:14px;padding:8px 12px;font-size:13px}
+.badge .medal{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#F7B733,#E98E12);display:grid;place-items:center;color:#fff;font:700 13px var(--f-display);flex:none}
+.badge.locked{opacity:.45}
+.badge.locked .medal{background:var(--surface-2);color:var(--muted)}
+
+@media (max-width:900px){
+  .hero,.result,.join,.studio,.dna,.dna-main{grid-template-columns:1fr}
+  .feat3{grid-template-columns:1fr}
+  .innov{grid-template-columns:repeat(2,1fr)}
+  .side{position:static;flex-direction:row;flex-wrap:wrap}
+  .side .s-note{display:none}
+}
+@media (max-width:560px){
+  .choices,.choice-edit,.src3,.hero-demo .opts{grid-template-columns:1fr}
+  .innov{grid-template-columns:1fr}
+  .nav{margin-left:0;width:100%}
+  .me-chip span{display:none}
+  .card{padding:16px}
+  .qcard{padding:20px}
+  .bar{grid-template-columns:80px 1fr 42px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="brand" href="#home" aria-label="QUIZVERSE หน้าแรก">
+      <span class="brand-mark">Q</span>
+      <span><span class="brand-name">QUIZVERSE</span><span class="brand-tag">Learn • Play • Challenge • Grow</span></span>
+    </a>
+    <nav class="nav" aria-label="เมนูหลัก">
+      <a href="#home" data-nav="home">หน้าแรก</a>
+      <a href="#studio" data-nav="studio">สร้างแบบทดสอบ</a>
+      <a href="#join" data-nav="join">เข้าร่วมเกม</a>
+      <a href="#dna" data-nav="dna">Learning DNA</a>
+    </nav>
+    <div class="me-chip"><div class="avatar" id="topAvatar">S</div><span id="topName">Student01</span></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- 1 HOME -->
+<section class="view" id="v-home">
+  <div class="hero">
+    <div>
+      <h1>QUIZVERSE</h1>
+      <p class="tagline">LEARN • PLAY • CHALLENGE • GROW</p>
+      <p class="lead">เรียนรู้ให้สนุก ท้าทายตัวเอง และพัฒนาความรู้ด้วย AI ที่บอกได้ว่าคุณอ่อนเรื่องไหน และควรฝึกอะไรต่อ</p>
+      <div class="row">
+        <a class="btn btn-white" href="#studio">+ เริ่มสร้าง Quiz</a>
+        <a class="btn btn-outline" href="#join">เข้าร่วมเกม</a>
+      </div>
+    </div>
+    <div class="hero-demo" aria-hidden="true">
+      <div class="meta"><span>ห้อง 587421 · วิทยาศาสตร์</span><span>ข้อ 3/8 · ระดับปานกลาง</span></div>
+      <div class="q">ข้อใดเป็นสาเหตุหลักที่ทำให้เกิดฤดูกาลบนโลก?</div>
+      <div class="opts">
+        <span class="ch0">A · ระยะห่างจากดวงอาทิตย์</span>
+        <span class="ch1">B · แกนโลกเอียง 23.5°</span>
+        <span class="ch2">C · ดวงจันทร์บังแสง</span>
+        <span class="ch3">D · โลกหมุนเร็วขึ้น</span>
+      </div>
+      <div class="meta"><span>ความมั่นใจ: มั่นใจ</span><span>+870 คะแนน</span></div>
+    </div>
+  </div>
+
+  <div class="grid feat3">
+    <div class="card feat"><div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 10h.01M15 10h.01M9 15c1.5 1 4.5 1 6 0"/></svg></div><div><h3>AI สร้างคำถามจากเนื้อหา</h3><p class="muted small">วางเนื้อหาหรืออัปโหลดไฟล์ข้อความ AI ร่างข้อสอบพร้อมเฉลย ครูตรวจแก้และอนุมัติก่อนเผยแพร่</p></div></div>
+    <div class="card feat"><div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 20V12M12 20V7M19 20V4"/></svg></div><div><h3>ปรับระดับความยาก (Adaptive Quiz)</h3><p class="muted small">ตอบถูกติดกันระบบเพิ่มความยาก ตอบผิดระบบลดระดับ ทุกคนได้โจทย์ที่พอดีกับตัวเอง</p></div></div>
+    <div class="card feat"><div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .6 3 2.8 3 6"/></svg></div><div><h3>วิเคราะห์ผลการเรียนรายบุคคล</h3><p class="muted small">Learning DNA แสดงจุดแข็ง จุดที่ควรพัฒนา และสร้างแผนทบทวนอัตโนมัติ</p></div></div>
+  </div>
+
+  <div class="card">
+    <p class="eyebrow">วงจรการเรียนรู้ของ QUIZVERSE</p>
+    <div class="loop" style="margin-top:10px">
+      <span class="step">ทำ Quiz</span><span class="arr">→</span><span class="step">วิเคราะห์ข้อผิดพลาด</span><span class="arr">→</span><span class="step">อธิบาย</span><span class="arr">→</span><span class="step">ปรับความยาก</span><span class="arr">→</span><span class="step">ฝึกซ้ำ</span><span class="arr">→</span><span class="step">วัดพัฒนาการ</span>
+    </div>
+  </div>
+
+  <div>
+    <h2 style="font-size:22px;margin-bottom:12px">ฟังก์ชันเด่นที่แตกต่างจาก Kahoot</h2>
+    <div class="grid innov">
+      <div class="card"><span class="tag">นวัตกรรมหลัก</span><h4>AI Adaptive Quiz</h4><p class="small muted">ปรับระดับความยากรายคนระหว่างเล่น</p></div>
+      <div class="card"><span class="tag">นวัตกรรมหลัก</span><h4>AI Mistake Explainer</h4><p class="small muted">อธิบายว่าทำไมผิด และแนะนำการฝึกซ้ำ</p></div>
+      <div class="card"><span class="tag">นวัตกรรมหลัก</span><h4>Learning DNA</h4><p class="small muted">วิเคราะห์จุดแข็งและจุดอ่อนรายหัวข้อ</p></div>
+      <div class="card"><span class="tag">ระยะ 2</span><h4>Confidence-Based Quiz</h4><p class="small muted">แยกคนที่เข้าใจจริงกับคนที่เดาถูก</p></div>
+      <div class="card"><span class="tag">ระยะ 2</span><h4>Smart Revision</h4><p class="small muted">นัดทบทวนข้อที่ผิดตามช่วงเวลา (Spaced Repetition)</p></div>
+    </div>
+  </div>
+
+  <div class="card how">
+    <p class="eyebrow">ขั้นตอนการใช้งาน</p>
+    <ol style="margin-top:10px">
+      <li>ผู้สอนสร้างชุดคำถามเอง หรือให้ AI ช่วยร่างข้อสอบใน <a href="#studio">สร้างแบบทดสอบ</a></li>
+      <li>ผู้สอนตรวจคำถาม อนุมัติ และเผยแพร่ ระบบสร้าง PIN 6 หลักให้</li>
+      <li>ผู้เรียนกรอก PIN และชื่อเพื่อ <a href="#join">เข้าร่วมเกม</a> (ลองใช้ PIN ตัวอย่าง 587421)</li>
+      <li>ระบบคิดคะแนนจากความถูกต้องและเวลา แล้วปรับระดับคำถามตามผลการตอบ</li>
+      <li>จบเกมแล้ว ระบบแสดงอันดับ ผลสรุป และคำอธิบายข้อที่ผิด</li>
+      <li>ผู้เรียนทบทวนข้อที่ผิดตามแผน และติดตามพัฒนาการใน <a href="#dna">Learning DNA</a></li>
+    </ol>
+  </div>
+</section>
+
+<!-- 2 STUDIO -->
+<section class="view" id="v-studio" hidden>
+  <div class="studio">
+    <aside class="side" aria-label="เมนูผู้สอน">
+      <div class="s-item">แดชบอร์ด</div>
+      <div class="s-item on">สร้าง Quiz</div>
+      <div class="s-item">คลังข้อสอบ</div>
+      <div class="s-item">รายงานผล</div>
+      <p class="s-note">ต้นแบบนี้เปิดใช้เฉพาะเมนู "สร้าง Quiz" ส่วนเมนูอื่นอยู่ในแผนพัฒนาระยะต่อไป</p>
+    </aside>
+    <div class="view" style="gap:18px;min-width:0">
+      <div class="row" style="justify-content:space-between">
+        <div><h2 style="font-size:26px">สร้างแบบทดสอบ</h2><p class="muted small">ร่างคำถาม ตรวจแก้ อนุมัติ แล้วเผยแพร่เป็นห้องเกม</p></div>
+        <div class="tabs" role="tablist">
+          <button id="tabManual" role="tab">สร้างเอง</button>
+          <button id="tabAI" class="on" role="tab">AI สร้างจากเนื้อหา</button>
+        </div>
+      </div>
+
+      <div class="card" id="aiPanel" style="display:flex;flex-direction:column;gap:14px">
+        <div><h3 style="font-size:18px">AI สร้างข้อสอบให้อัตโนมัติ</h3><p class="muted small">เลือกแหล่งเนื้อหา AI จะร่างคำถาม ตัวเลือก เฉลย และคำอธิบาย คุณต้องตรวจและกดอนุมัติทุกข้อก่อนเผยแพร่</p></div>
+        <div class="grid src3">
+          <div class="src" data-src="file"><button class="pick" type="button"><b>อัปโหลดไฟล์</b><span class="small muted">.txt หรือ .md</span></button></div>
+          <div class="src on" data-src="topic"><button class="pick" type="button"><b>ใส่หัวข้อ</b><span class="small muted">เช่น ระบบสุริยะ</span></button></div>
+          <div class="src" data-src="text"><button class="pick" type="button"><b>วางข้อความ</b><span class="small muted">จากบทเรียนหรือชีต</span></button></div>
+        </div>
+        <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
+          <label class="fld">วิชา
+            <select id="aiSubject"></select>
+          </label>
+          <label class="fld">จำนวนข้อ
+            <select id="aiCount"><option>3</option><option selected>5</option><option>8</option></select>
+          </label>
+          <label class="fld">ระดับความยาก
+            <select id="aiLevel"><option value="mix" selected>คละระดับ (สำหรับ Adaptive)</option><option value="1">ง่าย</option><option value="2">ปานกลาง</option><option value="3">ยาก</option></select>
+          </label>
+        </div>
+        <div id="srcTopic"><label class="fld">หัวข้อ<input type="text" id="aiTopic" value="ระบบสุริยะและการเคลื่อนที่ของโลก"></label></div>
+        <div id="srcText" hidden><label class="fld">เนื้อหาบทเรียน<textarea id="aiText" placeholder="วางเนื้อหาบทเรียนที่นี่ (สูงสุดประมาณ 6,000 ตัวอักษร)"></textarea></label></div>
+        <div id="srcFile" hidden>
+          <label class="fld">ไฟล์เนื้อหา (.txt, .md)<input type="file" id="aiFile" accept=".txt,.md,text/plain,text/markdown"></label>
+          <p class="small muted" id="fileInfo">ไฟล์ PDF, DOCX และ PPT ต้องใช้ระบบหลังบ้านในเวอร์ชัน Go Live ตอนนี้ให้คัดลอกข้อความมาวางแทน</p>
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" id="aiGo">สร้างด้วย AI</button>
+          <button class="btn btn-ghost" id="aiStop" hidden>หยุด</button>
+          <span class="ai-status" id="aiStatus">กำลังเชื่อมต่อ AI…</span>
+        </div>
+      </div>
+
+      <div class="card" id="manualPanel" hidden style="display:flex;flex-direction:column;gap:12px">
+        <h3 style="font-size:18px">สร้างคำถามเอง</h3>
+        <p class="muted small">เพิ่มคำถามเปล่า กรอกคำถาม ตัวเลือก 4 ข้อ เลือกเฉลย แล้วเขียนคำอธิบายสั้นๆ ที่จะแสดงหลังผู้เรียนตอบ</p>
+        <div class="row"><label class="fld" style="flex:1 1 200px">วิชา<select id="manSubject"></select></label><button class="btn btn-primary" id="addBlank" style="align-self:end">+ เพิ่มคำถาม</button></div>
+      </div>
+
+      <div class="row" style="justify-content:space-between">
+        <h3 style="font-size:18px">ร่างคำถาม <span class="pill num" id="draftCount">0 ข้อ</span></h3>
+        <span class="small muted" id="approvedCount"></span>
+      </div>
+      <div id="drafts" class="grid" style="gap:12px"></div>
+
+      <div class="card publish-bar">
+        <label class="fld" style="flex:1 1 260px">ชื่อชุดข้อสอบ<input type="text" id="quizTitle" value="ทบทวนบทเรียนด้วย AI"></label>
+        <button class="btn btn-primary" id="publishBtn">เผยแพร่และสร้าง PIN</button>
+        <p class="err" id="publishErr" style="flex-basis:100%"></p>
+        <div id="publishedBox" hidden style="flex-basis:100%;display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <div><p class="small muted">PIN ห้องเกม</p><p class="pin-big num" id="pubPin"></p></div>
+          <a class="btn btn-soft" href="#join">ไปหน้าเข้าร่วมเกม</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 JOIN -->
+<section class="view" id="v-join" hidden>
+  <div class="join">
+    <form class="card join-card" id="joinForm" novalidate>
+      <div><h2 style="font-size:26px">เข้าร่วมเกม</h2><p class="muted small">กรอกรหัสห้อง (Game PIN) จากผู้สอน แล้วตั้งชื่อผู้เล่น</p></div>
+      <label class="fld">รหัสห้อง (Game PIN)<input type="text" id="pinIn" class="pin-input num" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="______"></label>
+      <label class="fld">ชื่อผู้เล่น<input type="text" id="nameIn" maxlength="20" value="Student01"></label>
+      <p class="err" id="joinErr"></p>
+      <button class="btn btn-primary" type="submit">เข้าร่วมเกม →</button>
+      <p class="small muted">ไม่ต้องสมัครสมาชิก ผลการเล่นจะเก็บไว้ใน Learning DNA บนอุปกรณ์นี้</p>
+    </form>
+    <div class="card" style="display:flex;flex-direction:column;gap:12px;min-width:0">
+      <h3 style="font-size:18px">ห้องที่เปิดอยู่</h3>
+      <p class="small muted">ต้นแบบนี้เล่นบนอุปกรณ์เดียว เพื่อนร่วมห้องในตารางอันดับเป็นผู้เล่นจำลอง ส่วนระบบเล่นพร้อมกันหลายเครื่องจะทำในเวอร์ชัน Go Live</p>
+      <div id="roomList" class="grid" style="gap:10px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 ARENA -->
+<section class="view" id="v-arena" hidden>
+  <div class="arena-top">
+    <div class="row"><span class="pill num" id="arRoom">ห้อง</span><span class="pill num" id="arCount">1/8</span><span class="pill" id="arLevel">ปานกลาง</span></div>
+    <div class="progress" aria-hidden="true"><i id="arProg" style="width:0"></i></div>
+    <div class="timer" id="arTimer"><span class="num" id="arTime">20</span></div>
+  </div>
+  <div class="qcard">
+    <div class="qmeta"><span class="pill" id="arTopic">วิชา</span><span class="pill num" id="arScore">0 คะแนน</span></div>
+    <h2 id="arQ">คำถาม</h2>
+  </div>
+  <div class="conf" id="confRow"><span class="muted">ความมั่นใจของคุณ:</span>
+    <button data-conf="sure" class="on">มั่นใจมาก</button><button data-conf="mid">ปานกลาง</button><button data-conf="guess">เดา</button>
+  </div>
+  <div class="choices" id="arChoices"></div>
+  <div class="feedback" id="arFb" hidden>
+    <div class="row" style="justify-content:space-between"><h3 id="fbTitle"></h3><span class="adapt" id="fbAdapt"></span></div>
+    <p id="fbExplain"></p>
+    <div class="row" id="fbAIrow"><button class="btn btn-soft btn-sm" id="fbAI">AI อธิบายว่าทำไมผิด</button><span class="small muted" id="fbAInote"></span></div>
+    <div class="ai-box" id="fbAIbox" hidden></div>
+    <div class="row" style="justify-content:flex-end"><button class="btn btn-primary" id="fbNext">ข้อต่อไป →</button></div>
+  </div>
+</section>
+
+<!-- 5 RESULT -->
+<section class="view" id="v-result" hidden>
+  <div class="result">
+    <div class="podium-wrap">
+      <h2 style="font-size:26px">ผลการเล่นเกม</h2>
+      <div class="podium" id="podium"></div>
+      <div class="lb" id="lbList"></div>
+    </div>
+    <div class="card summary">
+      <p class="eyebrow">สรุปของคุณ</p>
+      <div class="row"><div class="avatar" id="rsAvatar">S</div><b id="rsName" style="font-family:var(--f-display)">Student01</b></div>
+      <p class="big-score num" id="rsScore">0</p>
+      <div>
+        <div class="srow"><span>ตอบถูก</span><b class="num" id="rsRight"></b></div>
+        <div class="srow"><span>ตอบผิด</span><b class="num" id="rsWrong"></b></div>
+        <div class="srow"><span>ความแม่นยำ</span><b class="num" id="rsAcc"></b></div>
+        <div class="srow"><span>ระดับสูงสุดที่ไปถึง</span><b id="rsLevel"></b></div>
+      </div>
+      <p class="small" id="rsConf"></p>
+      <div class="row">
+        <button class="btn btn-ghost" id="rsReviewBtn">ดูเฉลยและคำอธิบาย</button>
+        <a class="btn btn-primary" href="#dna">วิเคราะห์การเรียนรู้</a>
+      </div>
+    </div>
+  </div>
+  <div class="card review" id="rsReview" hidden></div>
+</section>
+
+<!-- 6 DNA -->
+<section class="view" id="v-dna" hidden>
+  <div class="example-note" id="exampleNote"><span>ข้อมูลในหน้านี้เป็นตัวอย่าง เพื่อให้เห็นภาพการทำงาน ผลจากการเล่นจริงจะถูกรวมเข้ามาทันที</span><button class="btn btn-sm btn-ghost" id="clearExample">ล้างข้อมูลตัวอย่าง</button></div>
+  <div class="dna">
+    <div class="card profile">
+      <div class="avatar" id="pfAvatar">S</div>
+      <div><h3 id="pfName">Student01</h3><p class="small muted" id="pfLevel">Lv. 1</p></div>
+      <div style="width:100%"><div class="xpbar"><i id="pfXP"></i></div><p class="small muted num" id="pfXPtxt" style="margin-top:4px"></p></div>
+      <div class="streak" id="pfStreak">ต่อเนื่อง 0 วัน</div>
+      <div class="small muted" id="pfGames"></div>
+    </div>
+    <div class="view" style="gap:18px;min-width:0">
+      <div><h2 style="font-size:26px">โปรไฟล์การเรียนรู้ของฉัน (Learning DNA)</h2><p class="muted small">รวมผลจากทุกเกมและการฝึกทบทวน เพื่อบอกว่าเก่งเรื่องไหน และควรฝึกเรื่องใดต่อ</p></div>
+      <div class="dna-main">
+        <div class="card radar"><h3 style="font-size:16px;margin-bottom:6px">ความสามารถรายหัวข้อ</h3><div id="radar"></div></div>
+        <div class="card sw"><h3 style="font-size:16px">จุดแข็ง และจุดที่ควรพัฒนา</h3><div id="swBox" class="sw"></div></div>
+      </div>
+      <div class="card"><h3 style="font-size:16px;margin-bottom:12px">ความแม่นยำรายวิชา</h3><div class="bars" id="bars"></div></div>
+      <div class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div class="row" style="justify-content:space-between"><div><h3 style="font-size:16px">แผนทบทวนอัตโนมัติ (Smart Revision)</h3><p class="small muted">ข้อที่เคยตอบผิด หรือตอบถูกแต่เดา จะกลับมาให้ฝึกซ้ำหลัง 1, 3, 7 และ 14 วัน</p></div><button class="btn btn-primary" id="practiceBtn">ฝึกทบทวนตอนนี้</button></div>
+        <div id="revList"></div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:10px">
+        <div class="row" style="justify-content:space-between"><div><h3 style="font-size:16px">AI Study Coach</h3><p class="small muted">ให้ AI อ่านผลของคุณแล้วเขียนแผนเรียนสั้นๆ สำหรับสัปดาห์นี้</p></div><button class="btn btn-soft" id="coachBtn">ขอแผนการเรียนจาก AI</button></div>
+        <div class="ai-box" id="coachBox" hidden></div>
+      </div>
+      <div class="card"><h3 style="font-size:16px;margin-bottom:12px">รางวัลจากพัฒนาการ (Mastery Rewards)</h3><div class="badges" id="badges"></div></div>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SUBJECTS = ["วิทยาศาสตร์","คณิตศาสตร์","ภาษาอังกฤษ","ภาษาไทย","สังคมศึกษา"];
+const LEVEL = {1:"ง่าย",2:"ปานกลาง",3:"ยาก"};
+const DAY = 86400000;
+const INTERVALS = [1,3,7,14];
+const TIME_LIMIT = 20;
+const ROUNDS = 8;
+
+/* ---------- storage (per-viewer, fails soft) ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem("qv_"+k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem("qv_"+k, JSON.stringify(v)); }catch{} }
+};
+
+/* ---------- sample quiz (teacher-approved example) ---------- */
+const Q = (topic, level, q, choices, answer, explain) => ({topic, level, q, choices, answer, explain});
+const SAMPLE_QUIZ = { pin:"587421", title:"ทบทวนก่อนสอบกลางภาค ม.4", example:true, questions:[
+  Q("วิทยาศาสตร์",1,"โลกมีการเคลื่อนที่แบบใดรอบดวงอาทิตย์?",["การหมุนรอบตัวเอง","การโคจรรอบดวงอาทิตย์","การสั่นสะเทือน","การเคลื่อนที่เป็นเส้นตรง"],1,"การโคจรคือการเคลื่อนที่รอบดวงอาทิตย์ ใช้เวลาประมาณ 365.25 วัน ส่วนการหมุนรอบตัวเองทำให้เกิดกลางวันและกลางคืน"),
+  Q("วิทยาศาสตร์",2,"ข้อใดเป็นสาเหตุหลักที่ทำให้เกิดฤดูกาลบนโลก?",["ระยะห่างจากดวงอาทิตย์เปลี่ยนไป","แกนโลกเอียงประมาณ 23.5 องศา","ดวงจันทร์บังแสงอาทิตย์","โลกหมุนเร็วขึ้นในบางช่วง"],1,"แกนโลกที่เอียงทำให้แต่ละซีกโลกรับแสงอาทิตย์ในมุมและระยะเวลาต่างกันตลอดปี จึงเกิดฤดูกาล"),
+  Q("วิทยาศาสตร์",3,"วัตถุมวล 2 kg ถูกแรงลัพธ์ 10 N กระทำ จะมีความเร่งเท่าใด?",["0.2 m/s²","5 m/s²","12 m/s²","20 m/s²"],1,"ใช้กฎข้อที่ 2 ของนิวตัน a = F/m = 10/2 = 5 m/s²"),
+  Q("คณิตศาสตร์",1,"ถ้า 3x + 5 = 20 แล้ว x เท่ากับเท่าใด?",["3","5","7","15"],1,"ย้าย 5 ไปอีกฝั่งได้ 3x = 15 แล้วหารด้วย 3 ได้ x = 5"),
+  Q("คณิตศาสตร์",2,"ค่าของ (-2)³ + 4² คือเท่าใด?",["8","-24","24","0"],0,"(-2)³ = -8 และ 4² = 16 รวมกันได้ -8 + 16 = 8"),
+  Q("คณิตศาสตร์",3,"สามเหลี่ยมมุมฉากมีด้านประกอบมุมฉากยาว 6 และ 8 หน่วย ด้านตรงข้ามมุมฉากยาวเท่าใด?",["10 หน่วย","12 หน่วย","14 หน่วย","48 หน่วย"],0,"ใช้ทฤษฎีบทพีทาโกรัส c² = 6² + 8² = 36 + 64 = 100 ดังนั้น c = 10"),
+  Q("ภาษาอังกฤษ",1,"Choose the correct word: She ___ to school every day.",["go","goes","going","gone"],1,"ประธานเอกพจน์บุรุษที่ 3 (She) ใน Present Simple ต้องเติม -es ที่กริยา จึงเป็น goes"),
+  Q("ภาษาอังกฤษ",2,"Which sentence is in the past perfect tense?",["I have eaten.","I had eaten before he came.","I am eating.","I will eat."],1,"Past Perfect ใช้ had + V3 เพื่อบอกเหตุการณ์ที่เกิดก่อนอีกเหตุการณ์หนึ่งในอดีต"),
+  Q("ภาษาอังกฤษ",3,"คำว่า \"reluctant\" มีความหมายใกล้เคียงกับคำใด?",["eager","unwilling","happy","careful"],1,"reluctant แปลว่า ไม่เต็มใจ ซึ่งตรงกับ unwilling ส่วน eager มีความหมายตรงข้าม"),
+  Q("ภาษาไทย",1,"คำใดสะกดถูกต้อง?",["อนุญาติ","อนุญาต","อนุญาด","อนุยาต"],1,"คำที่ถูกต้องคือ อนุญาต (ไม่มีสระอิ) เป็นคำที่มักสะกดผิดบ่อย"),
+  Q("ภาษาไทย",2,"สำนวน \"น้ำขึ้นให้รีบตัก\" มีความหมายตรงกับข้อใด?",["ควรขยันตักน้ำเก็บไว้","เมื่อมีโอกาสควรรีบทำ","ไม่ควรประมาทในชีวิต","ทำงานให้ทันเวลาน้ำขึ้น"],1,"สำนวนนี้หมายถึง เมื่อมีโอกาสดีเข้ามา ควรรีบคว้าไว้ก่อนโอกาสจะหมดไป"),
+  Q("ภาษาไทย",3,"ข้อใดใช้โวหารภาพพจน์ประเภทอุปมา?",["เธอสวยดั่งดอกไม้แรกแย้ม","ลมกระซิบข้างหู","ฟ้าร้องไห้ทั้งคืน","เสียงดังเปรี้ยงปร้าง"],0,"อุปมาคือการเปรียบเทียบโดยใช้คำเชื่อม เช่น ดั่ง เหมือน ราวกับ ส่วน \"ลมกระซิบ\" และ \"ฟ้าร้องไห้\" เป็นบุคคลวัต"),
+  Q("สังคมศึกษา",1,"ประเทศไทยมีการปกครองระบอบใด?",["สมบูรณาญาสิทธิราชย์","ประชาธิปไตยอันมีพระมหากษัตริย์ทรงเป็นประมุข","สังคมนิยม","สาธารณรัฐ"],1,"ประเทศไทยปกครองระบอบประชาธิปไตยอันมีพระมหากษัตริย์ทรงเป็นประมุข ตั้งแต่ปี พ.ศ. 2475"),
+  Q("สังคมศึกษา",2,"ข้อใดเป็นทรัพยากรที่ใช้แล้วหมดไป?",["แสงอาทิตย์","ลม","น้ำมันดิบ","ป่าไม้ที่ปลูกทดแทน"],2,"น้ำมันดิบเกิดจากซากสิ่งมีชีวิตใช้เวลานับล้านปี เมื่อใช้แล้วไม่สามารถสร้างทดแทนได้ในเวลาอันสั้น"),
+  Q("สังคมศึกษา",3,"ถ้าความต้องการซื้อสินค้าเพิ่มขึ้น ขณะที่ปริมาณสินค้าคงเดิม ราคาสินค้ามักเป็นอย่างไร?",["ลดลง","สูงขึ้น","คงที่","เป็นศูนย์"],1,"ตามกฎอุปสงค์และอุปทาน เมื่ออุปสงค์เพิ่มแต่อุปทานคงที่ ราคาดุลยภาพจะสูงขึ้น")
+]};
+
+/* ---------- example learning profile (clearly marked) ---------- */
+function exampleProfile(){
+  const now = Date.now();
+  const rq = i => ({...SAMPLE_QUIZ.questions[i], qid: SAMPLE_QUIZ.questions[i].q});
+  return {
+    example:true, name:"Student01", xp:3240, games:12, streak:7, lastDay: dayKey(now),
+    stats:{
+      "วิทยาศาสตร์":{right:23,total:25,hist:[80,88,92]},
+      "คณิตศาสตร์":{right:15,total:24,hist:[40,55,63]},
+      "ภาษาอังกฤษ":{right:22,total:25,hist:[84,86,88]},
+      "ภาษาไทย":{right:18,total:25,hist:[70,68,72]},
+      "สังคมศึกษา":{right:17,total:25,hist:[60,66,68]}
+    },
+    conf:{sureWrong:3,guessRight:5},
+    revision:[
+      {...rq(5), step:0, due: now - DAY/2, reason:"ตอบผิด"},
+      {...rq(4), step:1, due: now + 2*DAY, reason:"ตอบผิด"},
+      {...rq(14), step:0, due: now + DAY, reason:"ตอบถูกแต่เดา"}
+    ],
+    mastered:4, bestJump:23
+  };
+}
+function emptyProfile(name){
+  const stats = {}; SUBJECTS.forEach(s => stats[s] = {right:0,total:0,hist:[]});
+  return {example:false, name:name||"Student01", xp:0, games:0, streak:0, lastDay:null, stats, conf:{sureWrong:0,guessRight:0}, revision:[], mastered:0, bestJump:0};
+}
+function dayKey(t){ const d = new Date(t); return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(); }
+
+let quizzes = store.get("quizzes", null);
+if (!Array.isArray(quizzes) || !quizzes.length) quizzes = [SAMPLE_QUIZ];
+let profile = store.get("profile", null) || exampleProfile();
+let drafts = store.get("drafts", []);
+const save = () => { store.set("quizzes", quizzes.filter(q => !q.example)); store.set("profile", profile); store.set("drafts", drafts); };
+// keep sample room first even after reload
+quizzes = [SAMPLE_QUIZ, ...quizzes.filter(q => !q.example)];
+
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2800); }
+
+/* ---------- AI (Claude via artifact sample capability) ---------- */
+let SAMPLE = null, aiState = "pending";
+function aiMsg(code){
+  return ({not_granted:"ไม่ได้อนุญาตให้ใช้ AI ในหน้านี้", sampling_disabled:"บัญชีนี้ใช้ AI ไม่ได้", rate_limited:"เรียกใช้ AI ถี่เกินไป ลองใหม่อีกครั้งในอีกสักครู่", invalid_json:"AI ตอบกลับในรูปแบบที่อ่านไม่ได้ ลองกดสร้างอีกครั้ง", refused:"AI ไม่สามารถสร้างจากเนื้อหานี้ได้ ลองปรับเนื้อหา", session_expired:"กรุณาเข้าสู่ระบบ Claude อีกครั้ง", prompt_too_large:"เนื้อหายาวเกินไป ลองตัดให้สั้นลง"})[code] || "เชื่อมต่อ AI ไม่สำเร็จ ลองใหม่อีกครั้ง";
+}
+function setAIState(s){
+  aiState = s;
+  const st = $("#aiStatus");
+  if (s === "ready"){ st.textContent = "AI พร้อมใช้งาน"; st.className = "ai-status ok"; $("#aiGo").disabled = false; }
+  else if (s === "off"){ st.textContent = "AI ใช้ได้เมื่อเปิดหน้านี้ใน Claude ตอนนี้สร้างคำถามเองได้ในแท็บ \"สร้างเอง\""; st.className = "ai-status"; $("#aiGo").disabled = true; }
+  else { st.textContent = "กำลังเชื่อมต่อ AI…"; $("#aiGo").disabled = true; }
+  $("#coachBtn").hidden = s === "off";
+}
+(async () => {
+  try { SAMPLE = window.claude?.use ? await window.claude.use("sample") : null; } catch { SAMPLE = null; }
+  setAIState(SAMPLE ? "ready" : "off");
+})();
+
+/* ---------- router ---------- */
+const VIEWS = ["home","studio","join","arena","result","dna"];
+let game = null, lastResult = null;
+function route(){
+  let v = location.hash.slice(1);
+  if (!VIEWS.includes(v)) v = "home";
+  if (v === "arena" && !game) v = "join";
+  if (v === "result" && !lastResult) v = "home";
+  if (game && v !== "arena"){ stopTimer(); game = null; }
+  VIEWS.forEach(x => $("#v-"+x).hidden = x !== v);
+  $$(".nav a").forEach(a => a.classList.toggle("on", a.dataset.nav === v || (v==="arena"||v==="result") && a.dataset.nav==="join"));
+  if (v === "studio") renderDrafts();
+  if (v === "join") renderRooms();
+  if (v === "dna") renderDNA();
+  window.scrollTo(0,0);
+}
+function go(v){ if (location.hash === "#"+v) route(); else location.hash = v; }
+addEventListener("hashchange", route);
+
+function setTopUser(){ $("#topName").textContent = profile.name; $("#topAvatar").textContent = (profile.name||"S").trim().charAt(0).toUpperCase(); }
+
+/* ================= STUDIO ================= */
+SUBJECTS.forEach(s => { $("#aiSubject").add(new Option(s)); $("#manSubject").add(new Option(s)); });
+let srcMode = "topic";
+$$(".src").forEach(el => el.querySelector(".pick").onclick = () => {
+  srcMode = el.dataset.src;
+  $$(".src").forEach(x => x.classList.toggle("on", x === el));
+  $("#srcTopic").hidden = srcMode !== "topic"; $("#srcText").hidden = srcMode !== "text"; $("#srcFile").hidden = srcMode !== "file";
+});
+let fileText = "";
+$("#aiFile").onchange = e => {
+  const f = e.target.files[0]; fileText = "";
+  if (!f) return;
+  if (!/\.(txt|md)$/i.test(f.name)){ $("#fileInfo").textContent = "รองรับเฉพาะ .txt และ .md ในต้นแบบนี้ ไฟล์ PDF/DOCX ให้คัดลอกข้อความมาวางแทน"; return; }
+  const r = new FileReader();
+  r.onload = () => { fileText = String(r.result).slice(0, 8000); $("#fileInfo").textContent = `อ่านไฟล์ ${f.name} แล้ว (${fileText.length.toLocaleString()} ตัวอักษร)`; };
+  r.readAsText(f);
+};
+function setTab(ai){
+  $("#tabAI").classList.toggle("on", ai); $("#tabManual").classList.toggle("on", !ai);
+  $("#aiPanel").hidden = !ai; $("#manualPanel").hidden = ai;
+}
+$("#tabAI").onclick = () => setTab(true);
+$("#tabManual").onclick = () => setTab(false);
+$("#addBlank").onclick = () => {
+  drafts.push({topic:$("#manSubject").value, level:1, q:"", choices:["","","",""], answer:0, explain:"", approved:false, src:"manual"});
+  save(); renderDrafts();
+  const cards = $$("#drafts .draft"); cards[cards.length-1]?.querySelector("textarea")?.focus();
+};
+
+let aiCtl = null;
+$("#aiGo").onclick = async () => {
+  if (!SAMPLE) return;
+  const subject = $("#aiSubject").value, n = +$("#aiCount").value, lv = $("#aiLevel").value;
+  let content = "";
+  if (srcMode === "topic") content = "หัวข้อ: " + $("#aiTopic").value.trim();
+  if (srcMode === "text") content = "เนื้อหาบทเรียน:\n" + $("#aiText").value.trim().slice(0, 6000);
+  if (srcMode === "file") content = "เนื้อหาจากไฟล์:\n" + fileText;
+  if (content.replace(/^[^:]*:\s*/, "").trim().length < 3){ toast("กรุณาใส่หัวข้อหรือเนื้อหาก่อน"); return; }
+  const levelRule = lv === "mix" ? "คละระดับความยาก 1 (ง่าย) 2 (ปานกลาง) 3 (ยาก) ให้ใกล้เคียงกัน" : `ทุกข้อเป็นระดับ ${lv} (${LEVEL[lv]})`;
+  const prompt = `คุณเป็นครูผู้ช่วยออกข้อสอบวิชา${subject} สำหรับนักเรียนมัธยม
+สร้างข้อสอบปรนัย 4 ตัวเลือก ภาษาไทย (ยกเว้นวิชาภาษาอังกฤษใช้ภาษาอังกฤษในตัวโจทย์ได้) จำนวน ${n} ข้อ จากข้อมูลต่อไปนี้ ${levelRule}
+มีคำตอบถูกเพียงข้อเดียว ตัวลวงต้องสมเหตุสมผล และคำอธิบายต้องบอกเหตุผลว่าทำไมคำตอบนั้นถูก ไม่เกิน 2 ประโยค
+ตอบเป็น JSON array เท่านั้น รูปแบบ:
+[{"q":"คำถาม","choices":["ก","ข","ค","ง"],"answer":0,"explain":"คำอธิบาย","level":1}]
+โดย answer คือ index ของตัวเลือกที่ถูก (0-3)
+
+${content}`;
+  aiCtl = new AbortController();
+  $("#aiGo").disabled = true; $("#aiStop").hidden = false;
+  $("#aiStatus").textContent = "AI กำลังร่างข้อสอบ… อาจใช้เวลาประมาณ 10-60 วินาที"; $("#aiStatus").className = "ai-status";
+  try {
+    const arr = await SAMPLE.json(prompt, {signal: aiCtl.signal, cache:false});
+    const valid = (Array.isArray(arr) ? arr : []).filter(x => x && typeof x.q === "string" && Array.isArray(x.choices) && x.choices.length === 4 && Number.isInteger(+x.answer) && +x.answer >= 0 && +x.answer < 4);
+    if (!valid.length) throw {code:"invalid_json"};
+    valid.forEach(x => drafts.push({topic:subject, level: [1,2,3].includes(+x.level) ? +x.level : 2, q:String(x.q), choices:x.choices.map(String), answer:+x.answer, explain:String(x.explain||""), approved:false, src:"ai"}));
+    save(); renderDrafts();
+    toast(`AI ร่างข้อสอบ ${valid.length} ข้อแล้ว กรุณาตรวจและอนุมัติทีละข้อ`);
+    $("#drafts").scrollIntoView({behavior:"smooth", block:"start"});
+  } catch(e){
+    if (e?.code !== "cancelled") toast(aiMsg(e?.code));
+    if (e?.code === "not_granted" || e?.code === "sampling_disabled"){ SAMPLE = null; setAIState("off"); }
+  } finally {
+    $("#aiStop").hidden = true;
+    if (SAMPLE) setAIState("ready");
+  }
+};
+$("#aiStop").onclick = () => aiCtl?.abort();
+
+function draftValid(d){ return d.q.trim() && d.choices.every(c => c.trim()); }
+function renderDrafts(){
+  const box = $("#drafts");
+  $("#draftCount").textContent = drafts.length + " ข้อ";
+  const ap = drafts.filter(d => d.approved).length;
+  $("#approvedCount").textContent = drafts.length ? `อนุมัติแล้ว ${ap} จาก ${drafts.length} ข้อ` : "";
+  if (!drafts.length){ box.innerHTML = `<div class="card" style="box-shadow:none"><p class="muted">ยังไม่มีร่างคำถาม ให้ AI สร้างจากหัวข้อด้านบน หรือเปิดแท็บ "สร้างเอง" เพื่อเพิ่มทีละข้อ</p></div>`; return; }
+  box.innerHTML = drafts.map((d,i) => `
+    <div class="draft ${d.approved ? "approved":""}" data-i="${i}">
+      <div class="draft-head">
+        <div class="row" style="gap:8px"><b style="font-family:var(--f-display)">ข้อ ${i+1}</b><span class="pill">${esc(d.topic)}</span>${d.src==="ai" ? '<span class="pill warn">ร่างโดย AI</span>' : ""}</div>
+        <div class="row" style="gap:8px">
+          <select data-f="level" aria-label="ระดับความยาก" style="width:auto;padding:6px 10px">${[1,2,3].map(l => `<option value="${l}" ${d.level==l?"selected":""}>${LEVEL[l]}</option>`).join("")}</select>
+          <button class="btn btn-ghost btn-sm" data-act="del">ลบ</button>
+        </div>
+      </div>
+      <textarea data-f="q" rows="2" placeholder="พิมพ์คำถาม" style="min-height:56px" aria-label="คำถาม">${esc(d.q)}</textarea>
+      <div class="choice-edit">${d.choices.map((c,j) => `
+        <label class="${d.answer===j?"correct":""}"><input type="radio" name="ans${i}" data-ans="${j}" ${d.answer===j?"checked":""} aria-label="ตั้งเป็นคำตอบที่ถูก"><input type="text" data-c="${j}" value="${esc(c)}" placeholder="ตัวเลือก ${"ABCD"[j]}"></label>`).join("")}
+      </div>
+      <textarea data-f="explain" rows="2" placeholder="คำอธิบายเฉลย (แสดงหลังผู้เรียนตอบ)" style="min-height:56px" aria-label="คำอธิบาย">${esc(d.explain)}</textarea>
+      <label class="approve"><input type="checkbox" data-act="approve" ${d.approved?"checked":""}> ตรวจแล้ว อนุมัติให้ใช้ข้อนี้</label>
+    </div>`).join("");
+}
+$("#drafts").addEventListener("input", e => {
+  const card = e.target.closest(".draft"); if (!card) return;
+  const d = drafts[+card.dataset.i];
+  if (e.target.dataset.f === "q") d.q = e.target.value;
+  if (e.target.dataset.f === "explain") d.explain = e.target.value;
+  if (e.target.dataset.c !== undefined) d.choices[+e.target.dataset.c] = e.target.value;
+  if (d.approved && !draftValid(d)){ d.approved = false; card.classList.remove("approved"); card.querySelector("[data-act=approve]").checked = false; }
+  save();
+});
+$("#drafts").addEventListener("change", e => {
+  const card = e.target.closest(".draft"); if (!card) return;
+  const d = drafts[+card.dataset.i];
+  if (e.target.dataset.f === "level") d.level = +e.target.value;
+  if (e.target.dataset.ans !== undefined){ d.answer = +e.target.dataset.ans; card.querySelectorAll(".choice-edit label").forEach((l,j) => l.classList.toggle("correct", j===d.answer)); }
+  if (e.target.dataset.act === "approve"){
+    if (e.target.checked && !draftValid(d)){ e.target.checked = false; toast("กรอกคำถามและตัวเลือกให้ครบ 4 ข้อก่อนอนุมัติ"); return; }
+    d.approved = e.target.checked; card.classList.toggle("approved", d.approved);
+    const ap = drafts.filter(x => x.approved).length;
+    $("#approvedCount").textContent = `อนุมัติแล้ว ${ap} จาก ${drafts.length} ข้อ`;
+  }
+  save();
+});
+$("#drafts").addEventListener("click", e => {
+  if (e.target.dataset.act !== "del") return;
+  drafts.splice(+e.target.closest(".draft").dataset.i, 1); save(); renderDrafts();
+});
+$("#publishBtn").onclick = () => {
+  const ok = drafts.filter(d => d.approved && draftValid(d));
+  const pending = drafts.length - ok.length;
+  $("#publishErr").textContent = "";
+  if (ok.length < 3){ $("#publishErr").textContent = `ต้องมีคำถามที่อนุมัติแล้วอย่างน้อย 3 ข้อ (ตอนนี้ ${ok.length} ข้อ) ข้อที่ยังไม่ได้ตรวจจะไม่ถูกเผยแพร่`; return; }
+  let pin; do { pin = String(Math.floor(100000 + Math.random()*900000)); } while (quizzes.some(q => q.pin === pin));
+  quizzes.push({pin, title: $("#quizTitle").value.trim() || "แบบทดสอบใหม่", questions: ok.map(({topic,level,q,choices,answer,explain}) => ({topic,level,q,choices,answer,explain}))});
+  drafts = drafts.filter(d => !(d.approved && draftValid(d)));
+  save(); renderDrafts();
+  $("#pubPin").textContent = pin; $("#publishedBox").hidden = false;
+  toast(`เผยแพร่ ${ok.length} ข้อแล้ว` + (pending ? ` (ข้อที่ยังไม่อนุมัติ ${pending} ข้อยังอยู่ในร่าง)` : ""));
+};
+
+/* ================= JOIN ================= */
+function renderRooms(){
+  $("#nameIn").value = profile.name;
+  $("#roomList").innerHTML = quizzes.map(q => `
+    <div class="room"><div style="min-width:0"><b>${esc(q.title)}</b><p class="small muted">${q.questions.length} ข้อ · ${[...new Set(q.questions.map(x=>x.topic))].map(esc).join(", ")}${q.example ? " · ห้องตัวอย่าง" : ""}</p></div>
+    <button class="btn btn-soft btn-sm num" data-pin="${q.pin}">PIN ${q.pin}</button></div>`).join("");
+}
+$("#roomList").addEventListener("click", e => { const b = e.target.closest("[data-pin]"); if (b){ $("#pinIn").value = b.dataset.pin; $("#nameIn").focus(); } });
+$("#pinIn").addEventListener("input", e => e.target.value = e.target.value.replace(/\D/g, "").slice(0,6));
+$("#joinForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const pin = $("#pinIn").value, name = $("#nameIn").value.trim();
+  const err = $("#joinErr");
+  if (pin.length !== 6){ err.textContent = "รหัสห้องต้องเป็นตัวเลข 6 หลัก"; return; }
+  const quiz = quizzes.find(q => q.pin === pin);
+  if (!quiz){ err.textContent = "ไม่พบห้องนี้ ตรวจสอบ PIN กับผู้สอนอีกครั้ง"; return; }
+  if (!name){ err.textContent = "กรุณาตั้งชื่อผู้เล่น"; return; }
+  err.textContent = "";
+  if (profile.name !== name){ profile.name = name; save(); setTopUser(); }
+  startGame(quiz, false);
+});
+
+/* ================= GAME ENGINE ================= */
+/* Grading lives in one place (gradeAnswer) — in the Go Live version this moves to the server so clients cannot fake scores. */
+function gradeAnswer(question, choice, timeLeft){
+  const correct = choice === question.answer;
+  const points = correct ? Math.round(500 + 500 * (timeLeft / TIME_LIMIT)) + (question.level - 1) * 100 : 0;
+  return {correct, points};
+}
+function startGame(quiz, practice){
+  const pool = quiz.questions.map(q => ({...q, qid: q.qid || q.q}));
+  game = {quiz, practice, pool, asked:[], answers:[], level: practice ? 1 : 2, maxLevel:1, streak:0, total: practice ? pool.length : Math.min(ROUNDS, pool.length), score:0, conf:"sure", locked:false, timeLeft:TIME_LIMIT};
+  go("arena");
+  $("#arRoom").textContent = practice ? "โหมดฝึกทบทวน" : "ห้อง " + quiz.pin;
+  nextQuestion();
+}
+function pickQuestion(){
+  const left = game.pool.filter(q => !game.asked.includes(q));
+  if (game.practice) return left[0];
+  const last = game.asked[game.asked.length-1];
+  left.sort((a,b) => (Math.abs(a.level-game.level) - Math.abs(b.level-game.level)) || ((a.topic===last?.topic) - (b.topic===last?.topic)) || (Math.random()-.5));
+  const best = left.filter(q => Math.abs(q.level-game.level) === Math.abs(left[0].level-game.level) && (q.topic===last?.topic) === (left[0].topic===last?.topic));
+  return best[Math.floor(Math.random()*best.length)];
+}
+function nextQuestion(){
+  if (game.asked.length >= game.total) return finishGame();
+  const q = pickQuestion(); game.cur = q; game.asked.push(q); game.locked = false;
+  game.maxLevel = Math.max(game.maxLevel, q.level);
+  $("#arCount").textContent = `${game.asked.length}/${game.total}`;
+  $("#arProg").style.width = ((game.asked.length-1)/game.total*100) + "%";
+  $("#arLevel").textContent = "ระดับ" + LEVEL[q.level];
+  $("#arTopic").textContent = q.topic;
+  $("#arScore").textContent = game.score.toLocaleString() + " คะแนน";
+  $("#arQ").textContent = q.q;
+  $("#arChoices").innerHTML = q.choices.map((c,i) => `<button class="choice ch${i}" data-i="${i}"><span class="key">${"ABCD"[i]}</span><span>${esc(c)}</span></button>`).join("");
+  $("#arFb").hidden = true; $("#fbAIbox").hidden = true; $("#fbAIbox").textContent = "";
+  setConf("sure"); $("#confRow").hidden = false;
+  game.timeLeft = TIME_LIMIT; tick(); stopTimer();
+  game.timer = setInterval(() => { game.timeLeft = Math.max(0, game.timeLeft - 1); tick(); if (game.timeLeft <= 0) answer(-1); }, 1000);
+}
+function tick(){ $("#arTime").textContent = game.timeLeft; $("#arTimer").style.setProperty("--p", (game.timeLeft/TIME_LIMIT*100)+"%"); }
+function stopTimer(){ if (game?.timer){ clearInterval(game.timer); game.timer = null; } }
+function setConf(c){ if (game) game.conf = c; $$("#confRow button").forEach(b => b.classList.toggle("on", b.dataset.conf === c)); }
+$("#confRow").addEventListener("click", e => { const b = e.target.closest("[data-conf]"); if (b && !game?.locked) setConf(b.dataset.conf); });
+$("#arChoices").addEventListener("click", e => { const b = e.target.closest(".choice"); if (b) answer(+b.dataset.i); });
+document.addEventListener("keydown", e => {
+  if (!game || $("#v-arena").hidden || /input|textarea|select/i.test(e.target.tagName)) return;
+  const k = "abcd1234".indexOf(e.key.toLowerCase());
+  if (k >= 0 && !game.locked) answer(k % 4);
+  else if (e.key === "Enter" && game.locked) $("#fbNext").click();
+});
+
+const CONF_TXT = {sure:"มั่นใจมาก", mid:"ปานกลาง", guess:"เดา"};
+function answer(i){
+  if (game.locked) return; game.locked = true; stopTimer();
+  const q = game.cur, g = gradeAnswer(q, i, game.timeLeft);
+  game.score += g.points;
+  const prevLevel = game.level;
+  if (!game.practice){
+    if (g.correct){ game.streak++; if (game.streak >= 2 && game.level < 3){ game.level++; game.streak = 0; } }
+    else { game.streak = 0; if (game.level > 1) game.level--; }
+  }
+  game.answers.push({q, choice:i, correct:g.correct, points:g.points, conf: i < 0 ? "none" : game.conf});
+  $$("#arChoices .choice").forEach((b,j) => { b.disabled = true; if (j === q.answer) b.classList.add("right"); else if (j === i) b.classList.add("picked-wrong"); else b.classList.add("dim"); });
+  $("#confRow").hidden = true;
+  $("#arScore").textContent = game.score.toLocaleString() + " คะแนน";
+  const fb = $("#arFb"); fb.hidden = false; fb.className = "feedback " + (g.correct ? "good" : "bad");
+  $("#fbTitle").textContent = g.correct ? `ถูกต้อง! +${g.points} คะแนน` : (i < 0 ? "หมดเวลา" : "ยังไม่ถูก");
+  $("#fbTitle").style.color = g.correct ? "var(--ok)" : "var(--bad)";
+  let ex = (g.correct ? "" : `คำตอบที่ถูกคือ ${"ABCD"[q.answer]}. ${q.choices[q.answer]} — `) + (q.explain || "");
+  if (g.correct && game.conf === "guess") ex += " (คุณเลือกว่า \"เดา\" ระบบจะนำข้อนี้กลับมาให้ทบทวนอีกครั้ง)";
+  $("#fbExplain").textContent = ex;
+  $("#fbAdapt").textContent = game.practice ? "" : (game.level > prevLevel ? `ข้อถัดไป: ระดับ${LEVEL[game.level]} ↑` : game.level < prevLevel ? `ข้อถัดไป: ระดับ${LEVEL[game.level]} ↓` : "");
+  $("#fbAdapt").style.color = game.level > prevLevel ? "var(--ok)" : "var(--warn)";
+  const showAI = !g.correct && aiState === "ready";
+  $("#fbAIrow").hidden = !showAI; $("#fbAI").disabled = false; $("#fbAInote").textContent = "";
+  $("#fbNext").textContent = game.asked.length >= game.total ? "ดูผลการเล่น →" : "ข้อต่อไป →";
+  $("#fbNext").focus({preventScroll:true});
+  fb.scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+$("#fbNext").onclick = () => { aiExpCtl?.abort(); nextQuestion(); };
+
+let aiExpCtl = null;
+$("#fbAI").onclick = async () => {
+  if (!SAMPLE || !game) return;
+  const a = game.answers[game.answers.length-1], q = a.q;
+  const picked = a.choice < 0 ? "ไม่ได้ตอบ (หมดเวลา)" : q.choices[a.choice];
+  const prompt = `นักเรียนมัธยมตอบคำถามวิชา${q.topic}ผิด ช่วยอธิบายเป็นภาษาไทยที่เป็นกันเอง ไม่เกิน 110 คำ แบ่งเป็น 3 ส่วนสั้นๆ:
+1) ทำไมคำตอบที่เลือกจึงไม่ถูก
+2) หลักการหรือวิธีคิดที่ถูกต้อง
+3) เทคนิคจำหรือตัวอย่างสั้นๆ 1 ข้อ
+ห้ามขัดแย้งกับเฉลยที่ครูตรวจแล้ว ไม่ต้องใช้ Markdown
+
+คำถาม: ${q.q}
+ตัวเลือก: ${q.choices.map((c,i)=>"ABCD"[i]+". "+c).join(" | ")}
+นักเรียนตอบ: ${picked}
+เฉลยที่ครูตรวจแล้ว: ${"ABCD"[q.answer]}. ${q.choices[q.answer]}
+คำอธิบายของครู: ${q.explain}`;
+  aiExpCtl = new AbortController();
+  const box = $("#fbAIbox"); box.hidden = false; box.textContent = "AI กำลังคิด…";
+  $("#fbAI").disabled = true;
+  try {
+    await SAMPLE(prompt, {signal: aiExpCtl.signal, modelTier:"quick", onText: ({text}) => { box.textContent = text; }});
+    $("#fbAInote").textContent = "คำอธิบายนี้สร้างโดย AI โดยอิงจากเฉลยของครู";
+  } catch(e){
+    if (e?.code === "cancelled") return;
+    box.textContent = e?.text || ""; box.hidden = !e?.text;
+    $("#fbAInote").textContent = aiMsg(e?.code); $("#fbAI").disabled = false;
+    if (e?.code === "not_granted" || e?.code === "sampling_disabled"){ SAMPLE = null; setAIState("off"); $("#fbAIrow").hidden = true; }
+  }
+};
+
+/* ---------- finishing, profile update ---------- */
+const BOTS = [["Mild",.82],["Bank",.74],["Ploy",.66],["Tong",.55],["Fah",.48]];
+function botScores(n){
+  return BOTS.map(([name, skill]) => {
+    let s = 0; for (let i=0;i<n;i++) if (Math.random() < skill) s += Math.round(500 + 500*Math.random()*.9) + Math.floor(Math.random()*2)*100;
+    return {name, score:s, bot:true};
+  });
+}
+function applyToProfile(answers, practice){
+  const p = profile, now = Date.now();
+  const before = {}; SUBJECTS.forEach(s => before[s] = pct(p.stats[s]));
+  const gameTopic = {};
+  answers.forEach(a => {
+    const t = a.q.topic; p.stats[t] ||= {right:0,total:0,hist:[]};
+    p.stats[t].total++; if (a.correct) p.stats[t].right++;
+    (gameTopic[t] ||= {r:0,n:0}).n++; if (a.correct) gameTopic[t].r++;
+    if (a.conf === "sure" && !a.correct) p.conf.sureWrong++;
+    if (a.conf === "guess" && a.correct) p.conf.guessRight++;
+    const idx = p.revision.findIndex(r => r.qid === a.q.qid);
+    const needs = !a.correct || a.conf === "guess";
+    if (practice && idx >= 0){
+      const r = p.revision[idx];
+      if (needs){ r.step = 0; r.due = now + DAY; }
+      else { r.step++; if (r.step >= INTERVALS.length){ p.revision.splice(idx,1); p.mastered++; } else r.due = now + INTERVALS[r.step]*DAY; }
+    } else if (needs){
+      const item = {topic:a.q.topic, level:a.q.level, q:a.q.q, choices:a.q.choices, answer:a.q.answer, explain:a.q.explain, qid:a.q.qid, step:0, due: now + DAY, reason: a.correct ? "ตอบถูกแต่เดา" : "ตอบผิด"};
+      if (idx >= 0) p.revision[idx] = item; else p.revision.push(item);
+    }
+  });
+  Object.entries(gameTopic).forEach(([t,v]) => { const h = p.stats[t].hist; h.push(Math.round(v.r/v.n*100)); if (h.length > 10) h.shift(); });
+  SUBJECTS.forEach(s => { const jump = pct(p.stats[s]) - before[s]; if (before[s] > 0 && jump > p.bestJump) p.bestJump = jump; });
+  const right = answers.filter(a => a.correct).length;
+  p.xp += right*10 + (practice ? 5 : 20);
+  if (!practice) p.games++;
+  const today = dayKey(now), yest = dayKey(now - DAY);
+  if (p.lastDay !== today){ p.streak = p.lastDay === yest ? p.streak + 1 : 1; p.lastDay = today; }
+  save();
+}
+function finishGame(){
+  stopTimer();
+  const g = game; game = null;
+  applyToProfile(g.answers, g.practice);
+  if (g.practice){
+    const r = g.answers.filter(a => a.correct && a.conf !== "guess").length;
+    toast(`ฝึกทบทวนเสร็จ ถูก ${r}/${g.answers.length} ข้อ แผนทบทวนอัปเดตแล้ว`);
+    lastResult = null; go("dna"); return;
+  }
+  const players = [...botScores(g.total), {name: profile.name, score: g.score, me:true}].sort((a,b) => b.score - a.score);
+  lastResult = {g, players};
+  renderResult(); go("result");
+}
+
+/* ================= RESULT ================= */
+function renderResult(){
+  const {g, players} = lastResult;
+  const top = players.slice(0,3), order = [1,0,2];
+  $("#podium").innerHTML = order.filter(i => top[i]).map(i => `
+    <div class="pod p${i+1} ${top[i].me?"me":""}"><span class="who">${esc(top[i].name)}</span><span class="pts num">${top[i].score.toLocaleString()} คะแนน</span><div class="block">${i+1}</div></div>`).join("");
+  $("#lbList").innerHTML = players.map((p,i) => `<div class="${p.me?"me":""}"><span>${i+1}. ${esc(p.name)}${p.bot?' <span style="opacity:.7;font-size:12px">(จำลอง)</span>':""}</span><b class="num">${p.score.toLocaleString()}</b></div>`).join("");
+  const right = g.answers.filter(a => a.correct).length, n = g.answers.length;
+  $("#rsAvatar").textContent = profile.name.charAt(0).toUpperCase(); $("#rsName").textContent = profile.name;
+  $("#rsScore").textContent = g.score.toLocaleString() + " คะแนน";
+  $("#rsRight").textContent = right + " ข้อ"; $("#rsWrong").textContent = (n-right) + " ข้อ";
+  $("#rsAcc").textContent = Math.round(right/n*100) + "%";
+  $("#rsLevel").textContent = LEVEL[g.maxLevel];
+  const guessed = g.answers.filter(a => a.correct && a.conf === "guess").length;
+  const sureWrong = g.answers.filter(a => !a.correct && a.conf === "sure").length;
+  const notes = [];
+  if (guessed) notes.push(`ตอบถูกแต่เดา ${guessed} ข้อ`);
+  if (sureWrong) notes.push(`มั่นใจแต่ตอบผิด ${sureWrong} ข้อ (อาจเข้าใจคลาดเคลื่อน)`);
+  $("#rsConf").innerHTML = notes.length ? `<span class="pill warn">วิเคราะห์ความมั่นใจ</span> ${esc(notes.join(" · "))} ระบบเพิ่มข้อเหล่านี้เข้าแผนทบทวนแล้ว` : `<span class="pill ok">วิเคราะห์ความมั่นใจ</span> ความมั่นใจของคุณสอดคล้องกับผลการตอบ`;
+  $("#rsReview").hidden = true; $("#rsReviewBtn").textContent = "ดูเฉลยและคำอธิบาย";
+  $("#rsReview").innerHTML = `<h3 style="font-size:18px">เฉลยและคำอธิบาย</h3>` + g.answers.map((a,i) => `
+    <div class="rv ${a.correct?"okk":"wrong"}">
+      <div class="row" style="gap:8px"><b>ข้อ ${i+1}</b><span class="pill">${esc(a.q.topic)}</span><span class="pill">${LEVEL[a.q.level]}</span><span class="pill ${a.correct?"ok":"bad"}">${a.correct?"ถูก":"ผิด"}</span><span class="small muted">ความมั่นใจ: ${a.conf==="none"?"หมดเวลา":CONF_TXT[a.conf]}</span></div>
+      <p style="font-weight:600">${esc(a.q.q)}</p>
+      <p class="small">คุณตอบ: ${a.choice<0?"ไม่ได้ตอบ":esc(a.q.choices[a.choice])} · เฉลย: <b>${esc(a.q.choices[a.q.answer])}</b></p>
+      <p class="small muted">${esc(a.q.explain)}</p>
+    </div>`).join("");
+}
+$("#rsReviewBtn").onclick = () => { const r = $("#rsReview"); r.hidden = !r.hidden; $("#rsReviewBtn").textContent = r.hidden ? "ดูเฉลยและคำอธิบาย" : "ซ่อนเฉลย"; if (!r.hidden) r.scrollIntoView({behavior:"smooth"}); };
+
+/* ================= LEARNING DNA ================= */
+function pct(s){ return s && s.total ? Math.round(s.right/s.total*100) : 0; }
+const lvOf = xp => Math.floor(xp/300) + 1;
+function renderDNA(){
+  const p = profile;
+  $("#exampleNote").hidden = !p.example;
+  $("#pfAvatar").textContent = p.name.charAt(0).toUpperCase(); $("#pfName").textContent = p.name;
+  const lv = lvOf(p.xp), base = (lv-1)*300;
+  $("#pfLevel").textContent = "Lv. " + lv;
+  $("#pfXP").style.width = ((p.xp-base)/300*100) + "%";
+  $("#pfXPtxt").textContent = `XP ${p.xp.toLocaleString()} / ${(lv*300).toLocaleString()}`;
+  $("#pfStreak").textContent = `เรียนต่อเนื่อง ${p.streak} วัน`;
+  $("#pfGames").textContent = `เล่นแล้ว ${p.games} เกม · ทบทวนสำเร็จ ${p.mastered} ข้อ`;
+
+  const vals = SUBJECTS.map(s => pct(p.stats[s]));
+  $("#radar").innerHTML = radarSVG(SUBJECTS, vals);
+
+  const ranked = SUBJECTS.map((s,i) => ({s, v:vals[i], n:p.stats[s]?.total||0})).filter(x => x.n);
+  const strong = ranked.filter(x => x.v >= 75).sort((a,b)=>b.v-a.v);
+  const weak = ranked.filter(x => x.v < 70).sort((a,b)=>a.v-b.v);
+  $("#swBox").innerHTML = !ranked.length ? `<p class="muted small">ยังไม่มีข้อมูล เล่นเกมหรือฝึกทบทวนอย่างน้อย 1 ครั้ง แล้วผลวิเคราะห์จะขึ้นที่นี่</p>` : `
+    <div class="sw-box ok"><h4>จุดแข็ง</h4>${strong.length ? `<ul>${strong.map(x=>`<li>${x.s} (${x.v}%)</li>`).join("")}</ul>` : `<p class="small">ยังไม่มีวิชาที่ได้ 75% ขึ้นไป</p>`}</div>
+    <div class="sw-box bad"><h4>ควรพัฒนา</h4>${weak.length ? `<ul>${weak.map(x=>`<li>${x.s} (${x.v}%)</li>`).join("")}</ul>` : `<p class="small">ไม่มีวิชาที่ต่ำกว่า 70%</p>`}</div>
+    <p class="small muted">มั่นใจแต่ตอบผิด ${p.conf.sureWrong} ครั้ง · ตอบถูกแต่เดา ${p.conf.guessRight} ครั้ง</p>`;
+
+  $("#bars").innerHTML = SUBJECTS.map((s,i) => {
+    const v = vals[i], st = p.stats[s] || {total:0,hist:[]}, h = st.hist || [];
+    const trend = h.length >= 2 ? h[h.length-1] - h[0] : 0;
+    const color = v >= 75 ? "var(--ok)" : v >= 60 ? "var(--warn)" : "var(--bad)";
+    return `<div class="bar"><span>${s}</span><div class="track" title="${st.total} ข้อ"><i style="width:${v}%;background:${color}"></i></div><b class="num" style="text-align:right">${st.total ? v+"%" : "–"}</b></div>` +
+      (trend ? `<p class="small muted" style="margin:-6px 0 0 110px">${trend > 0 ? "พัฒนาขึ้น " + trend : "ลดลง " + Math.abs(trend)} จุด เทียบกับเกมแรกที่บันทึก</p>` : "");
+  }).join("");
+
+  const now = Date.now();
+  const rev = [...p.revision].sort((a,b) => a.due - b.due);
+  const dueN = rev.filter(r => r.due <= now).length;
+  $("#practiceBtn").textContent = dueN ? `ฝึกทบทวนตอนนี้ (${dueN} ข้อถึงกำหนด)` : rev.length ? "ฝึกล่วงหน้าทั้งหมด" : "ฝึกทบทวนตอนนี้";
+  $("#practiceBtn").disabled = !rev.length;
+  $("#revList").innerHTML = !rev.length ? `<p class="muted small">ยังไม่มีข้อที่ต้องทบทวน ข้อที่ตอบผิดจากเกมถัดไปจะถูกเพิ่มที่นี่อัตโนมัติ</p>` : rev.map(r => {
+    const d = Math.ceil((r.due - now)/DAY);
+    const when = r.due <= now ? `<span class="pill bad">ถึงกำหนดแล้ว</span>` : `<span class="pill">อีก ${d} วัน</span>`;
+    return `<div class="rev-item"><div style="min-width:0;flex:1 1 260px"><span class="small muted">${esc(r.topic)} · ${esc(r.reason)} · รอบที่ ${r.step+1}/${INTERVALS.length}</span><p>${esc(r.q)}</p></div>${when}</div>`;
+  }).join("");
+
+  const B = [
+    ["1", "ก้าวแรก", "เล่นเกมแรกสำเร็จ", p.games >= 1],
+    ["+", "พัฒนาการก้าวกระโดด", "วิชาใดวิชาหนึ่งเพิ่มขึ้น 10 จุดขึ้นไป", p.bestJump >= 10 || SUBJECTS.some(s => { const h = p.stats[s]?.hist||[]; return h.length>=2 && h[h.length-1]-h[0] >= 10; })],
+    ["✓", "แก้จุดอ่อนสำเร็จ", "ทบทวนข้อที่เคยผิดจนผ่านครบ 4 รอบ", p.mastered >= 1],
+    ["7", "ต่อเนื่อง 7 วัน", "เรียนติดต่อกัน 7 วัน", p.streak >= 7],
+    ["★", "เข้าใจรอบด้าน", "ทุกวิชาได้ 70% ขึ้นไป", SUBJECTS.every(s => pct(p.stats[s]) >= 70)]
+  ];
+  $("#badges").innerHTML = B.map(([m,t,d,on]) => `<div class="badge ${on?"":"locked"}"><span class="medal">${m}</span><div><b>${t}</b><p class="small muted">${d}</p></div></div>`).join("");
+}
+function radarSVG(labels, vals){
+  const cx = 160, cy = 140, R = 95, n = labels.length;
+  const pt = (i, r) => { const a = -Math.PI/2 + i*2*Math.PI/n; return [cx + r*Math.cos(a), cy + r*Math.sin(a)]; };
+  let g = "";
+  [25,50,75,100].forEach(l => { g += `<polygon points="${labels.map((_,i)=>pt(i,R*l/100).join(",")).join(" ")}" fill="none" stroke="var(--line)" stroke-width="1"/>`; });
+  labels.forEach((_,i) => { const [x,y] = pt(i,R); g += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--line)"/>`; });
+  g += `<polygon points="${vals.map((v,i)=>pt(i,R*v/100).join(",")).join(" ")}" fill="var(--violet)" fill-opacity=".22" stroke="var(--violet)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  vals.forEach((v,i) => { const [x,y] = pt(i,R*v/100); g += `<circle cx="${x}" cy="${y}" r="4" fill="var(--violet)"/>`; });
+  labels.forEach((l,i) => {
+    const [x,y] = pt(i, R + 18); const anchor = Math.abs(x-cx) < 8 ? "middle" : x > cx ? "start" : "end";
+    g += `<text x="${x}" y="${y + (y < cy - R/2 ? -2 : 6)}" text-anchor="${anchor}">${l} <tspan font-weight="600" fill="var(--ink)">${vals[i]}%</tspan></text>`;
+  });
+  return `<svg viewBox="-75 0 470 270" role="img" aria-label="กราฟความสามารถรายหัวข้อ">${g}</svg>`;
+}
+$("#practiceBtn").onclick = () => {
+  const now = Date.now();
+  let items = profile.revision.filter(r => r.due <= now);
+  if (!items.length) items = [...profile.revision];
+  if (!items.length) return;
+  startGame({pin:"—", title:"ฝึกทบทวน", questions: items.slice(0,8).map(r => ({...r}))}, true);
+};
+$("#clearExample").onclick = () => { profile = emptyProfile(profile.name); save(); renderDNA(); setTopUser(); toast("ล้างข้อมูลตัวอย่างแล้ว เริ่มเก็บผลจากการเล่นจริง"); };
+
+let coachCtl = null;
+$("#coachBtn").onclick = async () => {
+  if (!SAMPLE) return;
+  const p = profile;
+  const lines = SUBJECTS.map(s => `${s}: ${pct(p.stats[s])}% (${p.stats[s]?.total||0} ข้อ, ประวัติรายเกม ${(p.stats[s]?.hist||[]).join(", ") || "-"})`).join("\n");
+  const revs = p.revision.slice(0,6).map(r => `- [${r.topic}] ${r.q} (${r.reason})`).join("\n") || "-";
+  const prompt = `คุณคือ AI Study Coach ของแอป QUIZVERSE เขียนแผนการเรียน 7 วันสำหรับนักเรียนมัธยมชื่อ ${p.name} เป็นภาษาไทย ไม่เกิน 160 คำ ไม่ใช้ Markdown
+เริ่มด้วยประโยคชมจุดแข็ง 1 ประโยค จากนั้นแผนรายวันสั้นๆ (วันละ 15-20 นาที) เน้นวิชาที่อ่อนที่สุดก่อน และปิดด้วยกำลังใจ 1 ประโยค
+ผลการเรียนรายวิชา:
+${lines}
+มั่นใจแต่ตอบผิด ${p.conf.sureWrong} ครั้ง, ตอบถูกแต่เดา ${p.conf.guessRight} ครั้ง
+ข้อที่รอทบทวน:
+${revs}`;
+  coachCtl?.abort(); coachCtl = new AbortController();
+  const box = $("#coachBox"); box.hidden = false; box.textContent = "AI กำลังวิเคราะห์ผลของคุณ…";
+  $("#coachBtn").disabled = true;
+  try { await SAMPLE(prompt, {signal: coachCtl.signal, onText: ({text}) => { box.textContent = text; }}); }
+  catch(e){ if (e?.code !== "cancelled"){ box.textContent = (e?.text ? e.text + "\n\n" : "") + aiMsg(e?.code); if (e?.code === "not_granted" || e?.code === "sampling_disabled"){ SAMPLE = null; setAIState("off"); } } }
+  finally { $("#coachBtn").disabled = false; }
+};
+
+/* ---------- boot ---------- */
+setTopUser();
+setTab(true);
+route();
+})();
+</script>

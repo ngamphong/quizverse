@@ -15,6 +15,16 @@
 | `/play/[pin]` | Quiz Arena (Adaptive + Confidence) ตรวจคะแนนโดยเซิร์ฟเวอร์ และผลการเล่น/อันดับ |
 | `/practice` | โหมดฝึกทบทวน (Smart Revision) |
 | `/login` | เข้าสู่ระบบ / สมัครสมาชิก (ครู หรือ นักเรียน) |
+| `/live/host/[id]` | ห้องสด: หน้าจอครู (ขึ้นโปรเจกเตอร์) แสดง PIN รายชื่อ คำถาม จำนวนคนตอบ เฉลย และอันดับ |
+| `/live/[pin]` | ห้องสด: หน้าจอนักเรียนบนมือถือ |
+
+### ห้องสด (เล่นพร้อมกันหลายเครื่อง)
+
+1. ครูเข้าสู่ระบบ → **เข้าร่วมเกม** → กด **เปิดห้องสด** ที่ชุดข้อสอบ → ได้ PIN ห้องสดใหม่ เปิดหน้านี้ขึ้นจอ
+2. นักเรียนเปิด `/join` กรอก PIN ระบบรู้เองว่าเป็นห้องสด
+3. ครูกด **เริ่มเกม** → ทุกคนเห็นข้อเดียวกัน → ระบบเฉลยเองเมื่อหมดเวลาหรือทุกคนตอบครบ → **ข้อต่อไป** → จบเกม
+
+ตรวจคะแนนและจับเวลาบนเซิร์ฟเวอร์ ฐานข้อมูลบังคับให้ตอบได้ข้อละครั้ง Supabase Realtime ส่งแค่สัญญาณให้ทุกเครื่องดึงสถานะใหม่จากเซิร์ฟเวอร์ (และดึงซ้ำทุก 2-3 วินาทีเผื่อสัญญาณหาย) นักเรียนจึงปลอมข้อความเพื่อโกงไม่ได้ จบเกมแล้วผลเข้า Learning DNA อัตโนมัติ
 | `/dna` | Learning DNA: จุดแข็ง จุดอ่อน แผนทบทวน รางวัลจากพัฒนาการ |
 
 ## โครงสร้างโค้ด
@@ -44,7 +54,7 @@ npm run dev
 ### เชื่อมฐานข้อมูล (Supabase)
 
 1. สร้างโปรเจกต์ที่ [supabase.com](https://supabase.com) (Region: Southeast Asia (Singapore))
-2. **SQL Editor → New query** วางไฟล์ [`supabase/schema.sql`](supabase/schema.sql) แล้วกด **Run** จากนั้นทำซ้ำกับ [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421)
+2. **SQL Editor → New query** วางไฟล์แล้วกด **Run** ตามลำดับ: [`supabase/schema.sql`](supabase/schema.sql) → [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421) → [`supabase/live.sql`](supabase/live.sql) (ห้องสดหลายเครื่อง)
 3. **Project Settings → API Keys** คัดลอกค่าไปใส่ใน `.env.local` (ดู `.env.example`):
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
 4. **Authentication → URL Configuration** ตั้ง Site URL เป็นลิงก์ Vercel และเพิ่ม `http://localhost:3000/**` กับ `https://<ลิงก์ vercel>/**` ใน Redirect URLs
@@ -95,5 +105,5 @@ AI ทำงานผ่าน API ของเว็บเราเอง (`app
 - [x] **ระยะ 1** Next.js + Vercel (ข้อมูลเก็บในเบราว์เซอร์, เพื่อนร่วมห้องเป็นผู้เล่นจำลอง)
 - [x] **ระยะ 2** AI ผ่าน Gemini API (`GEMINI_API_KEY`), อ่านไฟล์ PDF/DOCX, Mistake Explainer สร้างโจทย์ฝึก
 - [x] **ระยะ 3** Supabase: ล็อกอินครู/นักเรียน, ฐานข้อมูล, ตรวจคะแนนฝั่งเซิร์ฟเวอร์
-- [ ] **ระยะ 4** Live Quiz หลายเครื่องพร้อมกัน (Supabase Realtime)
+- [x] **ระยะ 4** Live Quiz หลายเครื่องพร้อมกัน (Supabase Realtime)
 - [ ] **ระยะ 5** เครื่องมือครู: คลังข้อสอบ, รายงานผล, Teacher Early Alert, รูปประกอบคำถาม

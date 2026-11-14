@@ -23,7 +23,9 @@ export default function JoinPage() {
       .catch((e) => { setRooms([]); setRoomsErr(e instanceof Error ? e.message : "โหลดรายชื่อห้องไม่สำเร็จ"); });
   }, []);
 
-  function submit(e: React.FormEvent) {
+  const [opening, setOpening] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     const nm = (me?.name ?? name).trim();
     if (pin.length !== 6) return setErr("รหัสห้องต้องเป็นตัวเลข 6 หลัก");
@@ -31,7 +33,21 @@ export default function JoinPage() {
     setErr("");
     const p = loadProfile();
     if (!me && p.name !== nm) saveProfile({ ...p, name: nm });
-    router.push(`/play/${pin}`); // the server checks the PIN when the game starts
+    // a live room (teacher-led, many devices) or a solo quiz room — the server checks the PIN either way
+    const live = await fetch(`/api/live?pin=${pin}`).then((r) => r.json()).then((d) => !!d.live).catch(() => false);
+    router.push(live ? `/live/${pin}` : `/play/${pin}`);
+  }
+
+  async function openLive(quizPin: string) {
+    setOpening(quizPin);
+    try {
+      const r = await fetch("/api/live", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ quizPin }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setRoomsErr(d.error || "เปิดห้องสดไม่สำเร็จ"); return; }
+      router.push(`/live/host/${d.id}`);
+    } finally {
+      setOpening(null);
+    }
   }
 
   return (
@@ -60,7 +76,11 @@ export default function JoinPage() {
 
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
           <h3 style={{ fontSize: 18 }}>{me?.role === "teacher" ? "ห้องตัวอย่าง และห้องของคุณ" : "ห้องตัวอย่าง"}</h3>
-          <p className="small muted">คะแนนตรวจและจับเวลาโดยเซิร์ฟเวอร์ เพื่อนร่วมห้องในตารางอันดับยังเป็นผู้เล่นจำลอง จนกว่าจะถึงระยะที่ 4 (เล่นพร้อมกันหลายเครื่อง)</p>
+          <p className="small muted">
+            {me?.role === "teacher"
+              ? "\"เปิดห้องสด\" ให้ทั้งห้องเล่นพร้อมกันจากหลายเครื่อง: เปิดหน้าครูขึ้นจอโปรเจกเตอร์ แล้วให้นักเรียนกรอก PIN ใหม่ที่ได้"
+              : "กรอก PIN ห้องสดที่ครูแสดงบนจอเพื่อเล่นพร้อมเพื่อน หรือเลือกห้องตัวอย่างเพื่อเล่นเดี่ยว (เพื่อนในตารางอันดับเป็นผู้เล่นจำลอง)"}
+          </p>
           {roomsErr && <p className="err">{roomsErr}</p>}
           {rooms === null && <p className="small muted">กำลังโหลด…</p>}
           <div className="grid" style={{ gap: 10 }}>
@@ -70,7 +90,14 @@ export default function JoinPage() {
                   <b>{r.title}</b>
                   <p className="small muted">{r.count} ข้อ · {r.topics.join(", ")}{r.sample ? " · ห้องตัวอย่าง" : ""}</p>
                 </div>
-                <button type="button" className="btn btn-soft btn-sm num" onClick={() => setPin(r.pin)}>PIN {r.pin}</button>
+                <div className="row" style={{ gap: 8 }}>
+                  <button type="button" className="btn btn-soft btn-sm num" onClick={() => setPin(r.pin)}>เล่นเดี่ยว · PIN {r.pin}</button>
+                  {me?.role === "teacher" && (
+                    <button type="button" className="btn btn-primary btn-sm" disabled={opening === r.pin} onClick={() => openLive(r.pin)}>
+                      {opening === r.pin ? "กำลังเปิด…" : "เปิดห้องสด"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

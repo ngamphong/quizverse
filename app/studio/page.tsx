@@ -236,7 +236,7 @@ export default function StudioPage() {
             {publishedPin && (
               <div style={{ flexBasis: "100%", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                 <div><p className="small muted">PIN ห้องเกม</p><p className="pin-big num">{publishedPin}</p></div>
-                <Link className="btn btn-soft" href="/join">ไปหน้าเข้าร่วมเกม</Link>
+                <Link className="btn btn-soft" href="/join">ไปหน้าเข้าร่วมเกม (เปิดห้องสดได้ที่นั่น)</Link>
               </div>
             )}
           </div>

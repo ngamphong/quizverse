@@ -32,16 +32,18 @@ interface CallOptions {
 class RetryableError extends AiError {}
 
 export async function callGemini(opts: CallOptions): Promise<string> {
+  const hasFallback = !!opts.fallback && opts.fallback !== opts.model;
   try {
-    return await attempt(opts.model, opts);
+    // with a fallback, give the main model 25 s so the retry still fits in Vercel's 60 s limit
+    return await attempt(opts.model, opts, hasFallback ? 25_000 : 50_000);
   } catch (e) {
-    if (!(e instanceof RetryableError) || !opts.fallback || opts.fallback === opts.model) throw e;
-    console.warn(`[gemini] ${opts.model} unavailable, retrying with ${opts.fallback}`);
-    return attempt(opts.fallback, opts);
+    if (!(e instanceof RetryableError) || !hasFallback) throw e;
+    console.warn(`[gemini] ${opts.model} failed (${e.message}), retrying with ${opts.fallback}`);
+    return attempt(opts.fallback!, opts, 30_000);
   }
 }
 
-async function attempt(model: string, { parts, schema, maxOutputTokens = 4096, temperature = 0.7 }: CallOptions): Promise<string> {
+async function attempt(model: string, { parts, schema, maxOutputTokens = 4096, temperature = 0.7 }: CallOptions, timeoutMs: number): Promise<string> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new AiError(503, "ยังไม่ได้ตั้งค่า GEMINI_API_KEY บนเซิร์ฟเวอร์");
 
@@ -60,10 +62,10 @@ async function attempt(model: string, { parts, schema, maxOutputTokens = 4096, t
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(50_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
-    throw new AiError(504, "เชื่อมต่อ Gemini ไม่ได้หรือใช้เวลานานเกินไป ลองใหม่อีกครั้ง");
+    throw new RetryableError(504, `เชื่อมต่อ Gemini ไม่ได้หรือใช้เวลานานเกินไป ลองใหม่อีกครั้ง (${model})`);
   }
 
   if (!res.ok) {

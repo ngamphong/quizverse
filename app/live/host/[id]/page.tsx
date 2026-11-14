@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Distribution, Leaderboard } from "@/components/LiveBoard";
+import { TeamBoard, TeamRevealList } from "@/components/TeamViews";
 import { KEYS, LEVEL, TIME_LIMIT } from "@/lib/constants";
 import { toast } from "@/lib/storage";
 import { useLiveState, useTicker } from "@/lib/useLive";
@@ -36,7 +37,8 @@ export default function HostPage() {
   const left = s?.state === "question" ? secondsLeft() : TIME_LIMIT;
   useEffect(() => {
     if (!s || s.state !== "question" || autoRevealed.current === s.index) return;
-    const allIn = s.playerCount > 0 && (s.answeredCount ?? 0) >= s.playerCount;
+    // team mode: members may still change their vote after reading teammates' reasons, so wait for the timer
+    const allIn = !s.teamMode && s.playerCount > 0 && (s.answeredCount ?? 0) >= s.playerCount;
     const elapsed = s.timeLimit - left;
     if (allIn || elapsed >= s.timeLimit + 2) { autoRevealed.current = s.index; act("reveal"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -53,6 +55,7 @@ export default function HostPage() {
           <h2 style={{ fontSize: 24 }}>{s.title}</h2>
         </div>
         <div className="row">
+          {s.teamMode && <span className="pill warn">โหมดทีม (Collaborative Challenge)</span>}
           <span className="pill num">ผู้เล่น {s.playerCount} คน</span>
           {s.state !== "lobby" && s.state !== "ended" && <span className="pill num">ข้อ {s.index + 1}/{s.total}</span>}
           {s.state !== "ended" && <button className="btn btn-ghost btn-sm" disabled={busy} onClick={() => act("end")}>จบเกม</button>}
@@ -75,6 +78,7 @@ export default function HostPage() {
               {(s.players ?? []).map((n) => <span key={n} className="pill" style={{ fontSize: 14 }}>{n}</span>)}
               {!s.players?.length && <p className="small muted">ยังไม่มีใครเข้าห้อง</p>}
             </div>
+            {s.teamMode && <p className="small muted">เมื่อกดเริ่ม ระบบจะแบ่งทีมละประมาณ 3 คน (2-4 ทีม) สมาชิกต้องตอบพร้อมเหตุผล ทีมตัดสินด้วยเสียงข้างมาก ได้ 1,000 เมื่อถูก +200 ถ้าทุกคนให้เหตุผล</p>}
           </div>
         </div>
       )}
@@ -97,7 +101,7 @@ export default function HostPage() {
             ))}
           </div>
           <div className="row" style={{ justifyContent: "space-between" }}>
-            <span className="pill num" style={{ fontSize: 15 }}>ตอบแล้ว {s.answeredCount ?? 0}/{s.playerCount}</span>
+            <span className="pill num" style={{ fontSize: 15 }}>ตอบแล้ว {s.answeredCount ?? 0}/{s.playerCount}{s.teamMode ? " · ทีมกำลังอภิปราย เฉลยเมื่อหมดเวลา" : ""}</span>
             <button className="btn btn-primary" disabled={busy} onClick={() => act("reveal")}>เฉลยเลย</button>
           </div>
         </>
@@ -116,8 +120,15 @@ export default function HostPage() {
             </p>
           </div>
           <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
-            <h3 style={{ fontSize: 16 }}>อันดับ 5 คนแรก</h3>
-            <Leaderboard rows={s.reveal.leaderboard} />
+            {s.teamMode && s.teamReveal ? (
+              <>
+                <h3 style={{ fontSize: 16 }}>คำตอบและเหตุผลของแต่ละทีม</h3>
+                <TeamRevealList teams={s.teamReveal} choices={s.reveal.question.choices} />
+                {s.teams && <><h3 style={{ fontSize: 16 }}>อันดับทีม</h3><TeamBoard teams={s.teams} /></>}
+              </>
+            ) : (
+              <><h3 style={{ fontSize: 16 }}>อันดับ 5 คนแรก</h3><Leaderboard rows={s.reveal.leaderboard} /></>
+            )}
             <button className="btn btn-primary" disabled={busy} onClick={() => act("next")}>
               {s.index + 1 >= s.total ? "ดูผลรวม →" : "ข้อต่อไป →"}
             </button>
@@ -127,7 +138,9 @@ export default function HostPage() {
 
       {s.state === "ended" && (
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 560, width: "100%", alignSelf: "center" }}>
-          <h3 style={{ fontSize: 22 }}>จบเกม · อันดับรวม</h3>
+          {s.teamMode && s.teams?.length ? (
+            <><h3 style={{ fontSize: 22 }}>จบเกม · {s.teams[0].name} ชนะ!</h3><TeamBoard teams={s.teams} /><h3 style={{ fontSize: 16 }}>คะแนนรายคน</h3></>
+          ) : <h3 style={{ fontSize: 22 }}>จบเกม · อันดับรวม</h3>}
           <Leaderboard rows={s.leaderboard ?? []} />
           <p className="small muted">ผลของผู้เล่นที่เข้าสู่ระบบถูกบันทึกเข้า Learning DNA แล้ว</p>
           <Link className="btn btn-ghost" href="/join">กลับไปเลือกชุดข้อสอบ</Link>

@@ -78,6 +78,8 @@ export interface Profile {
   revision: RevisionItem[];
   mastered: number;
   bestJump: number;
+  /** Learning Quest: stars earned per subject per stage, e.g. { "คณิตศาสตร์": { "1": 3, "2": 1 } } */
+  quest?: Record<string, Record<string, number>>;
 }
 
 export interface Player {

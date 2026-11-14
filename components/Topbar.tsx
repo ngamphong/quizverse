@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/", label: "หน้าแรก" },
   { href: "/studio", label: "สร้างแบบทดสอบ" },
   { href: "/join", label: "เข้าร่วมเกม" },
+  { href: "/quest", label: "Learning Quest" },
   { href: "/dna", label: "Learning DNA" },
 ];
 

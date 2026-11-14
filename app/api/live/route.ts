@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const uid = await currentUserId(await supabaseServer());
     if (!uid) throw new HttpError(401, "เข้าสู่ระบบในฐานะครูก่อนเปิดห้องสด");
     const body = await req.json().catch(() => ({}));
-    return NextResponse.json(await createLive(String(body.quizPin ?? ""), uid));
+    return NextResponse.json(await createLive(String(body.quizPin ?? ""), uid, body.teamMode === true));
   } catch (e) {
     return fail(e);
   }

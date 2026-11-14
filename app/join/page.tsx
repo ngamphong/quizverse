@@ -38,10 +38,10 @@ export default function JoinPage() {
     router.push(live ? `/live/${pin}` : `/play/${pin}`);
   }
 
-  async function openLive(quizPin: string) {
+  async function openLive(quizPin: string, teamMode = false) {
     setOpening(quizPin);
     try {
-      const r = await fetch("/api/live", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ quizPin }) });
+      const r = await fetch("/api/live", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ quizPin, teamMode }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setRoomsErr(d.error || "เปิดห้องสดไม่สำเร็จ"); return; }
       router.push(`/live/host/${d.id}`);
@@ -93,9 +93,12 @@ export default function JoinPage() {
                 <div className="row" style={{ gap: 8 }}>
                   <button type="button" className="btn btn-soft btn-sm num" onClick={() => setPin(r.pin)}>เล่นเดี่ยว · PIN {r.pin}</button>
                   {me?.role === "teacher" && (
-                    <button type="button" className="btn btn-primary btn-sm" disabled={opening === r.pin} onClick={() => openLive(r.pin)}>
-                      {opening === r.pin ? "กำลังเปิด…" : "เปิดห้องสด"}
-                    </button>
+                    <>
+                      <button type="button" className="btn btn-primary btn-sm" disabled={opening === r.pin} onClick={() => openLive(r.pin)}>
+                        {opening === r.pin ? "กำลังเปิด…" : "เปิดห้องสด"}
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm" disabled={opening === r.pin} onClick={() => openLive(r.pin, true)}>ห้องสดแบบทีม</button>
+                    </>
                   )}
                 </div>
               </div>

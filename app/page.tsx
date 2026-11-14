@@ -5,8 +5,11 @@ const INNOV = [
   { tag: "นวัตกรรมหลัก", name: "AI Adaptive Quiz", desc: "ปรับระดับความยากรายคนระหว่างเล่น" },
   { tag: "นวัตกรรมหลัก", name: "AI Mistake Explainer", desc: "อธิบายว่าทำไมผิด และแนะนำการฝึกซ้ำ" },
   { tag: "นวัตกรรมหลัก", name: "Learning DNA", desc: "วิเคราะห์จุดแข็งและจุดอ่อนรายหัวข้อ" },
-  { tag: "ระยะ 2", name: "Confidence-Based Quiz", desc: "แยกคนที่เข้าใจจริงกับคนที่เดาถูก" },
-  { tag: "ระยะ 2", name: "Smart Revision", desc: "นัดทบทวนข้อที่ผิดตามช่วงเวลา (Spaced Repetition)" },
+  { tag: "ฟีเจอร์เสริม", name: "Learning Quest", desc: "วิชาละ 5 ด่าน ปลดล็อกและสะสมดาวตามผลการเรียน" },
+  { tag: "ฟีเจอร์เสริม", name: "Collaborative Challenge", desc: "ห้องสดแบบทีม ตอบพร้อมเหตุผลและตัดสินใจร่วมกัน" },
+  { tag: "ฟีเจอร์เสริม", name: "Confidence-Based Quiz", desc: "แยกคนที่เข้าใจจริงกับคนที่เดาถูก" },
+  { tag: "ฟีเจอร์เสริม", name: "Smart Revision", desc: "นัดทบทวนข้อที่ผิดตามช่วงเวลา (Spaced Repetition)" },
+  { tag: "สำหรับครู", name: "Teacher Early Alert", desc: "แจ้งหัวข้อที่ทั้งห้องยังไม่เข้าใจ ไม่ตัดสินจากคะแนนครั้งเดียว" },
 ];
 
 export default function Home() {

@@ -101,7 +101,7 @@ textarea { resize: vertical; min-height: 90px }
 .loop { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-weight: 600; font-size: 14px; margin-top: 10px }
 .loop .step { background: var(--surface-2); color: var(--violet); padding: 6px 12px; border-radius: 999px }
 .loop .arr { color: var(--muted) }
-.innov { grid-template-columns: repeat(5, 1fr) }
+.innov { grid-template-columns: repeat(4, 1fr) }
 .innov .card { padding: 16px; display: flex; flex-direction: column; gap: 6px; box-shadow: none }
 .innov .tag { font-size: 11px; font-weight: 600; color: var(--muted) }
 .innov h4 { font-size: 15px; color: var(--violet) }

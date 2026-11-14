@@ -17,8 +17,17 @@
 | `/login` | เข้าสู่ระบบ / สมัครสมาชิก (ครู หรือ นักเรียน) |
 | `/live/host/[id]` | ห้องสด: หน้าจอครู (ขึ้นโปรเจกเตอร์) แสดง PIN รายชื่อ คำถาม จำนวนคนตอบ เฉลย และอันดับ |
 | `/live/[pin]` | ห้องสด: หน้าจอนักเรียนบนมือถือ |
+| `/quest` | Learning Quest: วิชาละ 5 ด่าน ปลดล็อก ดาว XP และภารกิจแนะนำจาก Learning DNA |
 | `/teacher` | แดชบอร์ดครู: ภาพรวม, Teacher Early Alert, ความแม่นยำรายหัวข้อ, คลังข้อสอบ |
 | `/teacher/quiz/[id]` | รายงานผลรายข้อ/รายคน และแก้ไขข้อสอบ (รวมรูปประกอบ) |
+
+### Learning Quest
+
+วิชาละ 5 ด่าน (ปูพื้นฐาน → ฝึกฝน → ประยุกต์ → ท้าทาย → บอสใหญ่) ด่านละ 5 ข้อ ถูก 3 ข้อผ่านและปลดล็อกด่านถัดไป ได้ดาว 1-3 ดวงและ XP ระบบแนะนำภารกิจถัดไปจากวิชาที่อ่อนที่สุดใน Learning DNA คำถามมาจากคลัง `quest_questions` ถ้าด่านไหนมีไม่พอ Gemini จะสร้างครั้งเดียวแล้วเก็บไว้ใช้ซ้ำกับทุกคน
+
+### Collaborative Challenge (ห้องสดแบบทีม)
+
+ครูกด **ห้องสดแบบทีม** → เมื่อเริ่มเกม ระบบแบ่งทีมละประมาณ 3 คน (2-4 ทีม) → ทุกคนเลือกคำตอบ **พร้อมเหตุผล** และเห็นเหตุผลของเพื่อนในทีม เปลี่ยนใจได้จนหมดเวลา → คำตอบของทีมคือเสียงข้างมาก ได้ 1,000 เมื่อถูก +200 ถ้าทุกคนในทีมให้เหตุผล → หลังเฉลยทุกคนเห็นเหตุผลของทุกทีม
 
 ### เครื่องมือครู
 
@@ -63,7 +72,7 @@ npm run dev
 ### เชื่อมฐานข้อมูล (Supabase)
 
 1. สร้างโปรเจกต์ที่ [supabase.com](https://supabase.com) (Region: Southeast Asia (Singapore))
-2. **SQL Editor → New query** วางไฟล์แล้วกด **Run** ตามลำดับ: [`supabase/schema.sql`](supabase/schema.sql) → [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421) → [`supabase/live.sql`](supabase/live.sql) (ห้องสดหลายเครื่อง) → [`supabase/teacher.sql`](supabase/teacher.sql) (รูปประกอบคำถาม)
+2. **SQL Editor → New query** วางไฟล์แล้วกด **Run** ตามลำดับ: [`supabase/schema.sql`](supabase/schema.sql) → [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421) → [`supabase/live.sql`](supabase/live.sql) (ห้องสดหลายเครื่อง) → [`supabase/teacher.sql`](supabase/teacher.sql) (รูปประกอบคำถาม) → [`supabase/quest-team.sql`](supabase/quest-team.sql) (Learning Quest + โหมดทีม)
 3. **Project Settings → API Keys** คัดลอกค่าไปใส่ใน `.env.local` (ดู `.env.example`):
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
 4. **Authentication → URL Configuration** ตั้ง Site URL เป็นลิงก์ Vercel และเพิ่ม `http://localhost:3000/**` กับ `https://<ลิงก์ vercel>/**` ใน Redirect URLs

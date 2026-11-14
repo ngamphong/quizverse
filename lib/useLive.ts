@@ -8,7 +8,7 @@ import { supabaseBrowser } from "./supabase/client";
  * Realtime messages only say "something changed"; the state itself always comes from
  * /api/live/state, and a slow poll covers missed messages.
  */
-export function useLiveState(url: string | null, pin: string | null, opts: { host?: boolean } = {}) {
+export function useLiveState(url: string | null, pin: string | null, opts: { host?: boolean; answers?: boolean } = {}) {
   const [state, setState] = useState<LiveState | null>(null);
   const [error, setError] = useState("");
   const offset = useRef(0); // serverNow - Date.now()
@@ -49,10 +49,11 @@ export function useLiveState(url: string | null, pin: string | null, opts: { hos
     const ch = sb.channel(`live-${pin}`)
       .on("broadcast", { event: "state" }, soon)
       .on("broadcast", { event: "players" }, soon);
-    if (opts.host) ch.on("broadcast", { event: "answered" }, soon); // only the host shows the answer count live
+    // the host shows the answer count live; in team mode players also see teammates' votes live
+    if (opts.host || opts.answers) ch.on("broadcast", { event: "answered" }, soon);
     ch.subscribe();
     return () => { if (t) clearTimeout(t); sb.removeChannel(ch); };
-  }, [pin, refresh, opts.host]);
+  }, [pin, refresh, opts.host, opts.answers]);
 
   /** Seconds left on the current question, using server time. */
   const secondsLeft = useCallback(() => {

@@ -33,9 +33,9 @@ export default function TeacherPage() {
   }, []);
   useEffect(() => { if (me?.role === "teacher") load(); }, [me, load]);
 
-  async function openLive(pin: string) {
+  async function openLive(pin: string, teamMode = false) {
     setBusy(pin);
-    const r = await fetch("/api/live", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ quizPin: pin }) });
+    const r = await fetch("/api/live", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ quizPin: pin, teamMode }) });
     const d = await r.json().catch(() => ({}));
     setBusy(null);
     if (!r.ok) return toast(d.error || "เปิดห้องสดไม่สำเร็จ");
@@ -120,6 +120,7 @@ export default function TeacherPage() {
                     <div className="row" style={{ gap: 8 }}>
                       <Link className="btn btn-soft btn-sm" href={`/teacher/quiz/${z.id}`}>รายงาน / แก้ไข</Link>
                       <button className="btn btn-primary btn-sm" disabled={busy === z.pin} onClick={() => openLive(z.pin)}>เปิดห้องสด</button>
+                      <button className="btn btn-ghost btn-sm" disabled={busy === z.pin} onClick={() => openLive(z.pin, true)}>ห้องสดแบบทีม</button>
                       <button className="btn btn-ghost btn-sm" disabled={busy === z.id} onClick={() => remove(z.id)} style={confirmDel === z.id ? { color: "var(--bad)", borderColor: "var(--bad)" } : undefined}>
                         {confirmDel === z.id ? "ยืนยันลบ (ผลทั้งหมดจะหายด้วย)" : "ลบ"}
                       </button>

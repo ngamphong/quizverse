@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     const b = await req.json().catch(() => ({}));
-    return NextResponse.json(await answerLive(String(b.pid ?? ""), String(b.token ?? ""), Number(b.choice), String(b.conf ?? "")));
+    return NextResponse.json(await answerLive(String(b.pid ?? ""), String(b.token ?? ""), Number(b.choice), String(b.conf ?? ""), typeof b.reason === "string" ? b.reason : undefined));
   } catch (e) {
     return fail(e);
   }

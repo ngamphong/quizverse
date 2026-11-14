@@ -38,6 +38,7 @@ export default function DnaPage() {
     ["✓", "แก้จุดอ่อนสำเร็จ", "ทบทวนข้อที่เคยผิดจนผ่านครบ 4 รอบ", p.mastered >= 1],
     ["7", "ต่อเนื่อง 7 วัน", "เรียนติดต่อกัน 7 วัน", p.streak >= 7],
     ["★", "เข้าใจรอบด้าน", "ทุกวิชาได้ 70% ขึ้นไป", SUBJECTS.every((s) => pct(p.stats[s]) >= 70)],
+    ["5", "พิชิตบอสใหญ่", "ผ่านด่าน 5 ของ Learning Quest วิชาใดวิชาหนึ่ง", SUBJECTS.some((s) => (p.quest?.[s]?.["5"] ?? 0) > 0)],
   ];
 
   async function clearExample() {

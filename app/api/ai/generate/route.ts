@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { SUBJECTS } from "@/lib/constants";
 import { readUpload, type Source } from "@/lib/server/extract";
-import { AiError, callGemini, MODEL_MAIN, parseJson } from "@/lib/server/gemini";
+import { AiError, callGemini, MODEL_FAST, MODEL_MAIN, parseJson } from "@/lib/server/gemini";
 import { cleanQuestion, QUESTION_SCHEMA } from "@/lib/server/questions";
 import { rateLimited } from "@/lib/server/rateLimit";
 import { fail, tooMany } from "../_shared";
@@ -59,6 +59,7 @@ export async function POST(req: Request) {
 
     const raw = await callGemini({
       model: MODEL_MAIN,
+      fallback: MODEL_FAST,
       parts,
       schema: { type: "object", properties: { questions: { type: "array", items: QUESTION_SCHEMA } }, required: ["questions"] },
       maxOutputTokens: 8192,

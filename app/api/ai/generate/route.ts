@@ -63,10 +63,15 @@ export async function POST(req: Request) {
       parts,
       schema: { type: "object", properties: { questions: { type: "array", items: QUESTION_SCHEMA } }, required: ["questions"] },
       maxOutputTokens: 8192,
+      temperature: 0.4,
     });
     const data = parseJson<{ questions?: unknown[] }>(raw);
-    const questions = (data.questions ?? []).map((x) => cleanQuestion(x, subject)).filter(Boolean);
-    if (!questions.length) throw new AiError(502, "AI สร้างข้อสอบที่ใช้ได้ไม่สำเร็จ ลองปรับเนื้อหาแล้วสร้างใหม่");
+    // the model occasionally romanises Thai ("Dawkcraet…"); drop questions with no Thai script (except English class)
+    const thai = /[฀-๿]/;
+    const questions = (data.questions ?? [])
+      .map((x) => cleanQuestion(x, subject))
+      .filter((q): q is NonNullable<typeof q> => !!q && (subject === "ภาษาอังกฤษ" || thai.test(q.q + q.explain)));
+    if (!questions.length) throw new AiError(502, "AI สร้างข้อสอบที่ใช้ได้ไม่สำเร็จ กดสร้างอีกครั้ง หรือปรับเนื้อหา");
     return NextResponse.json({ questions });
   } catch (e) {
     return fail(e);

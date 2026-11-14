@@ -8,7 +8,9 @@ import { HttpError } from "./http";
  */
 const API = "https://generativelanguage.googleapis.com/v1beta/models";
 
-export const MODEL_MAIN = process.env.GEMINI_MODEL || "gemini-3.8-flash"; // quiz generation
+// gemini-3.8-flash took >25 s per quiz on the free key (it thinks before answering), so the
+// fast model is the default for everything; set GEMINI_MODEL to try a bigger model.
+export const MODEL_MAIN = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite"; // quiz generation
 export const MODEL_FAST = process.env.GEMINI_MODEL_FAST || "gemini-3.5-flash-lite"; // explanations, coach
 
 export const aiConfigured = () => !!process.env.GEMINI_API_KEY;

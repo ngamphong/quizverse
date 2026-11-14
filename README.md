@@ -69,7 +69,7 @@ AI ทำงานผ่าน API ของเว็บเราเอง (`app
 
 | API | ใช้ทำอะไร | โมเดล (เปลี่ยนได้ใน env) |
 |---|---|---|
-| `POST /api/ai/generate` | สร้างข้อสอบจากหัวข้อ ข้อความ หรือไฟล์ PDF/DOCX/TXT | `GEMINI_MODEL` (ค่าเริ่มต้น `gemini-3.8-flash`) |
+| `POST /api/ai/generate` | สร้างข้อสอบจากหัวข้อ ข้อความ หรือไฟล์ PDF/DOCX/TXT | `GEMINI_MODEL` (ค่าเริ่มต้น `gemini-3.5-flash-lite` ถ้าโมเดลที่ตั้งไว้ช้าเกิน 25 วินาทีจะสลับไปโมเดลเร็วอัตโนมัติ) |
 | `POST /api/ai/explain` | อธิบายข้อผิด + สร้างโจทย์ฝึกแก้จุดอ่อน 1 ข้อ | `GEMINI_MODEL_FAST` (ค่าเริ่มต้น `gemini-3.5-flash-lite`) |
 | `POST /api/ai/coach` | แผนการเรียน 7 วัน (ส่งเฉพาะคะแนน ไม่ส่งชื่อนักเรียน) | `GEMINI_MODEL_FAST` |
 | `GET /api/ai/status` | บอกหน้าเว็บว่าตั้ง key แล้วหรือยัง | – |

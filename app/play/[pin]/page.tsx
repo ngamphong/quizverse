@@ -158,7 +158,7 @@ export default function PlayPage() {
 
   return (
     <ArenaView
-      roomLabel={`ห้อง ${pin}`} index={index} total={total} topic={q.topic} level={q.level} q={q.q} choices={q.choices}
+      roomLabel={`ห้อง ${pin}`} index={index} total={total} topic={q.topic} level={q.level} q={q.q} choices={q.choices} image={q.image}
       score={score} timeLeft={timeLeft} conf={conf} onConf={(c) => { confRef.current = c; setConf(c); }}
       onAnswer={submit} feedback={fb} onNext={next} busy={busy} nextRef={nextBtn}
       nextLabel={answered?.done ? "ดูผลการเล่น →" : "ข้อต่อไป →"}

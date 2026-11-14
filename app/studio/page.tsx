@@ -2,13 +2,15 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AI_OFF_NOTE, generateQuestions, useAiReady } from "@/lib/ai";
-import { KEYS, LEVEL, SUBJECTS } from "@/lib/constants";
+import { SUBJECTS } from "@/lib/constants";
 import { loadDrafts, saveDrafts, toast } from "@/lib/storage";
 import type { Draft } from "@/lib/types";
 import { useMe } from "@/lib/useMe";
+import QuestionCard, { isQuestionValid } from "@/components/QuestionCard";
+import TeacherNav from "@/components/TeacherNav";
 
 type Src = "file" | "topic" | "text";
-const isValid = (d: Draft) => d.q.trim() !== "" && d.choices.every((c) => c.trim() !== "");
+const isValid = (d: Draft) => isQuestionValid(d);
 
 export default function StudioPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -85,7 +87,7 @@ export default function StudioPage() {
     try {
       const r = await fetch("/api/quizzes", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, questions: ok.map(({ topic, level, q, choices, answer, explain }) => ({ topic, level, q, choices, answer, explain })) }),
+        body: JSON.stringify({ title, questions: ok.map(({ topic, level, q, choices, answer, explain, image }) => ({ topic, level, q, choices, answer, explain, image })) }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setPublishErr(d.error || "เผยแพร่ไม่สำเร็จ"); return; }
@@ -105,14 +107,7 @@ export default function StudioPage() {
   return (
     <section className="view">
       <div className="studio">
-        <aside className="side" aria-label="เมนูผู้สอน">
-          <div className="s-item">แดชบอร์ด</div>
-          <div className="s-item on">สร้าง Quiz</div>
-          <div className="s-item">คลังข้อสอบ</div>
-          <div className="s-item">รายงานผล</div>
-          <div className="s-item">ห้องเรียน</div>
-          <p className="s-note">ตอนนี้เปิดใช้เฉพาะเมนู &quot;สร้าง Quiz&quot; ส่วนเมนูอื่นจะมาในระยะที่ 5</p>
-        </aside>
+        <TeacherNav active="studio" />
 
         <div className="view" style={{ gap: 18 }}>
           <div className="row" style={{ justifyContent: "space-between" }}>
@@ -189,38 +184,15 @@ export default function StudioPage() {
               </div>
             )}
             {drafts.map((d, i) => (
-              <div className={"draft" + (d.approved ? " approved" : "")} key={i}>
-                <div className="draft-head">
-                  <div className="row" style={{ gap: 8 }}>
-                    <b style={{ fontFamily: "var(--f-display)" }}>ข้อ {i + 1}</b>
-                    <span className="pill">{d.topic}</span>
-                    {d.src === "ai" && <span className="pill warn">ร่างโดย AI</span>}
-                  </div>
-                  <div className="row" style={{ gap: 8 }}>
-                    <select aria-label="ระดับความยาก" style={{ width: "auto", padding: "6px 10px" }} value={d.level} onChange={(e) => update(i, { level: +e.target.value })}>
-                      {[1, 2, 3].map((l) => <option key={l} value={l}>{LEVEL[l]}</option>)}
-                    </select>
-                    <button className="btn btn-ghost btn-sm" onClick={() => setDrafts((ds) => ds.filter((_, j) => j !== i))}>ลบ</button>
-                  </div>
-                </div>
-                <textarea data-q rows={2} placeholder="พิมพ์คำถาม" style={{ minHeight: 56 }} aria-label="คำถาม" value={d.q} onChange={(e) => update(i, { q: e.target.value })} />
-                <div className="choice-edit">
-                  {d.choices.map((c, j) => (
-                    <label key={j} className={d.answer === j ? "correct" : ""}>
-                      <input type="radio" name={`ans${i}`} checked={d.answer === j} onChange={() => update(i, { answer: j })} aria-label="ตั้งเป็นคำตอบที่ถูก" />
-                      <input type="text" value={c} placeholder={`ตัวเลือก ${KEYS[j]}`}
-                        onChange={(e) => update(i, { choices: d.choices.map((x, k) => (k === j ? e.target.value : x)) })} />
-                    </label>
-                  ))}
-                </div>
-                <textarea rows={2} placeholder="คำอธิบายเฉลย (แสดงหลังผู้เรียนตอบ)" style={{ minHeight: 56 }} aria-label="คำอธิบาย" value={d.explain} onChange={(e) => update(i, { explain: e.target.value })} />
-                <label className="approve">
-                  <input type="checkbox" checked={d.approved} onChange={(e) => {
-                    if (e.target.checked && !isValid(d)) { toast("กรอกคำถามและตัวเลือกให้ครบ 4 ข้อก่อนอนุมัติ"); return; }
-                    update(i, { approved: e.target.checked });
-                  }} /> ตรวจแล้ว อนุมัติให้ใช้ข้อนี้
-                </label>
-              </div>
+              <QuestionCard key={i} index={i} value={d} canUpload={me?.role === "teacher"}
+                badge={d.src === "ai" ? <span className="pill warn">ร่างโดย AI</span> : undefined}
+                onChange={(p) => update(i, p)}
+                onRemove={() => setDrafts((ds) => ds.filter((_, j) => j !== i))}
+                approved={d.approved}
+                onApprove={(v) => {
+                  if (v && !isValid(d)) { toast("กรอกคำถามและตัวเลือกให้ครบ 4 ข้อ (ห้ามซ้ำกัน) ก่อนอนุมัติ"); return; }
+                  update(i, { approved: v });
+                }} />
             ))}
           </div>
 

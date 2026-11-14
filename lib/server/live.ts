@@ -8,6 +8,7 @@ import { supabaseAdmin } from "../supabase/server";
 import type { AnswerRecord, Conf, Question } from "../types";
 import { HttpError } from "./http";
 import { loadProfileRow, saveLearning } from "./profiles";
+import { selectQuestions } from "./questions";
 import { nudge } from "./realtime";
 
 /**
@@ -39,7 +40,7 @@ async function quizTitle(quizId: string) {
 
 async function questionsById(ids: string[]): Promise<Map<string, Question>> {
   if (!ids.length) return new Map();
-  const { data } = await db().from("questions").select("id, topic, level, q, choices, answer, explain").in("id", ids);
+  const { data } = await selectQuestions<Question>((cols) => db().from("questions").select(cols).in("id", ids).returns<Question[]>());
   return new Map((data ?? []).map((q) => [q.id as string, { ...q, qid: q.id } as Question]));
 }
 
@@ -140,7 +141,7 @@ export async function getState(room: Room, viewer: { host: true } | { player: Pl
   }
   const qmap = qid ? await questionsById([qid]) : new Map<string, Question>();
   const q = qid ? qmap.get(qid) : undefined;
-  if (q && room.state === "question") s.question = { id: q.id!, topic: q.topic, level: q.level, q: q.q, choices: q.choices };
+  if (q && room.state === "question") s.question = { id: q.id!, topic: q.topic, level: q.level, q: q.q, choices: q.choices, image: q.image ?? null };
   if (q && room.state === "reveal") {
     const distribution = [0, 0, 0, 0];
     answers.forEach((a) => { if (a.choice >= 0) distribution[a.choice]++; });

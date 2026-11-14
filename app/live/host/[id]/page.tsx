@@ -86,7 +86,11 @@ export default function HostPage() {
             <div className="progress"><i style={{ width: `${(s.index / s.total) * 100}%` }} /></div>
             <div className="timer" style={{ ["--p" as string]: `${(left / TIME_LIMIT) * 100}%` }}><span className="num">{left}</span></div>
           </div>
-          <div className="qcard"><h2>{s.question.q}</h2></div>
+          <div className="qcard">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {s.question.image && <img className="qimg center" src={s.question.image} alt="รูปประกอบคำถาม" />}
+            <h2>{s.question.q}</h2>
+          </div>
           <div className="choices">
             {s.question.choices.map((c, i) => (
               <div key={i} className={`choice ch${i}`} style={{ cursor: "default" }}><span className="key">{KEYS[i]}</span><span>{c}</span></div>

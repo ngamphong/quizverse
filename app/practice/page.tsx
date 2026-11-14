@@ -98,7 +98,7 @@ export default function PracticePage() {
   const q = items[i];
   return (
     <ArenaView
-      roomLabel="โหมดฝึกทบทวน" index={i + 1} total={items.length} topic={q.topic} level={q.level} q={q.q} choices={q.choices}
+      roomLabel="โหมดฝึกทบทวน" index={i + 1} total={items.length} topic={q.topic} level={q.level} q={q.q} choices={q.choices} image={q.image}
       score={score} timeLeft={timeLeft} conf={conf} onConf={setConf} onAnswer={answer} feedback={fb} onNext={next}
       nextRef={nextBtn} nextLabel={i + 1 >= items.length ? "บันทึกผล →" : "ข้อต่อไป →"}
     >

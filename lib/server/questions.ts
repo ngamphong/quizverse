@@ -1,5 +1,32 @@
 import "server-only";
+import { SUPABASE_URL } from "../supabase/config";
 import type { Question } from "../types";
+
+export const IMAGE_BUCKET = "question-images";
+
+/** Accept only pictures stored in our own bucket (never arbitrary URLs). */
+export function cleanImageUrl(u: unknown): string | null {
+  if (typeof u !== "string" || !u) return null;
+  const prefix = `${SUPABASE_URL}/storage/v1/object/public/${IMAGE_BUCKET}/`;
+  return SUPABASE_URL && u.startsWith(prefix) && u.length < 500 && !u.includes("..") ? u : null;
+}
+
+/** DB column list for questions, exposing image_url as `image`. */
+export const QUESTION_COLUMNS = "id, topic, level, q, choices, answer, explain, image:image_url";
+const LEGACY_COLUMNS = "id, topic, level, q, choices, answer, explain";
+
+/**
+ * Runs a questions query with the image column, and retries without it if
+ * supabase/teacher.sql has not been run yet (Postgres 42703 = unknown column),
+ * so games keep working during an upgrade.
+ */
+export async function selectQuestions<T>(
+  run: (columns: string) => PromiseLike<{ data: T[] | null; error: { code?: string } | null }>,
+): Promise<{ data: T[] | null; error: { code?: string } | null }> {
+  const res = await run(QUESTION_COLUMNS);
+  if (res.error?.code === "42703") return run(LEGACY_COLUMNS);
+  return res;
+}
 
 /** JSON Schema for one multiple-choice question (used to constrain Gemini's output). */
 export const QUESTION_SCHEMA = {

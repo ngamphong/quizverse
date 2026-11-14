@@ -22,6 +22,7 @@ interface Props {
   level: number;
   q: string;
   choices: string[];
+  image?: string | null;
   score: number;
   timeLeft: number;
   conf: Conf;
@@ -61,6 +62,8 @@ export default function ArenaView(p: Props) {
 
       <div className="qcard">
         <div className="qmeta"><span className="pill">{p.topic}</span><span className="pill num">{p.score.toLocaleString()} คะแนน</span></div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {p.image && <img className="qimg" src={p.image} alt="รูปประกอบคำถาม" />}
         <h2>{p.q}</h2>
       </div>
 

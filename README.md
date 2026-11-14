@@ -17,6 +17,15 @@
 | `/login` | เข้าสู่ระบบ / สมัครสมาชิก (ครู หรือ นักเรียน) |
 | `/live/host/[id]` | ห้องสด: หน้าจอครู (ขึ้นโปรเจกเตอร์) แสดง PIN รายชื่อ คำถาม จำนวนคนตอบ เฉลย และอันดับ |
 | `/live/[pin]` | ห้องสด: หน้าจอนักเรียนบนมือถือ |
+| `/teacher` | แดชบอร์ดครู: ภาพรวม, Teacher Early Alert, ความแม่นยำรายหัวข้อ, คลังข้อสอบ |
+| `/teacher/quiz/[id]` | รายงานผลรายข้อ/รายคน และแก้ไขข้อสอบ (รวมรูปประกอบ) |
+
+### เครื่องมือครู
+
+- **Teacher Early Alert** แจ้งเมื่อหัวข้อใดตอบถูกเฉลี่ยต่ำกว่า 50% (≥ 8 คำตอบ), ข้อใดต่ำกว่า 40% (≥ 5 คำตอบ) และนักเรียนที่เฉลี่ยต่ำกว่า 50% **อย่างน้อย 2 ครั้งและยังไม่ดีขึ้น** ไม่ตัดสินจากคะแนนครั้งเดียว
+- **รายงานผล** รวมทั้งการเล่นเดี่ยวและห้องสด แสดง % ถูกรายข้อ จำนวนคนที่เลือกแต่ละตัวเลือก คำตอบผิดที่พบบ่อย และผลรายคน
+- **คลังข้อสอบ** แก้ไขข้อเดิมได้โดยผลเดิมยังอยู่ ลบข้อหรือลบชุดได้ (ผลของส่วนที่ลบจะหายด้วย)
+- **รูปประกอบคำถาม** ครูอัปโหลด PNG/JPG/WEBP/GIF ≤ 2 MB เก็บใน Supabase Storage (bucket `question-images`) ระบบรับเฉพาะ URL จาก bucket นี้
 
 ### ห้องสด (เล่นพร้อมกันหลายเครื่อง)
 
@@ -54,7 +63,7 @@ npm run dev
 ### เชื่อมฐานข้อมูล (Supabase)
 
 1. สร้างโปรเจกต์ที่ [supabase.com](https://supabase.com) (Region: Southeast Asia (Singapore))
-2. **SQL Editor → New query** วางไฟล์แล้วกด **Run** ตามลำดับ: [`supabase/schema.sql`](supabase/schema.sql) → [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421) → [`supabase/live.sql`](supabase/live.sql) (ห้องสดหลายเครื่อง)
+2. **SQL Editor → New query** วางไฟล์แล้วกด **Run** ตามลำดับ: [`supabase/schema.sql`](supabase/schema.sql) → [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421) → [`supabase/live.sql`](supabase/live.sql) (ห้องสดหลายเครื่อง) → [`supabase/teacher.sql`](supabase/teacher.sql) (รูปประกอบคำถาม)
 3. **Project Settings → API Keys** คัดลอกค่าไปใส่ใน `.env.local` (ดู `.env.example`):
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
 4. **Authentication → URL Configuration** ตั้ง Site URL เป็นลิงก์ Vercel และเพิ่ม `http://localhost:3000/**` กับ `https://<ลิงก์ vercel>/**` ใน Redirect URLs
@@ -106,4 +115,4 @@ AI ทำงานผ่าน API ของเว็บเราเอง (`app
 - [x] **ระยะ 2** AI ผ่าน Gemini API (`GEMINI_API_KEY`), อ่านไฟล์ PDF/DOCX, Mistake Explainer สร้างโจทย์ฝึก
 - [x] **ระยะ 3** Supabase: ล็อกอินครู/นักเรียน, ฐานข้อมูล, ตรวจคะแนนฝั่งเซิร์ฟเวอร์
 - [x] **ระยะ 4** Live Quiz หลายเครื่องพร้อมกัน (Supabase Realtime)
-- [ ] **ระยะ 5** เครื่องมือครู: คลังข้อสอบ, รายงานผล, Teacher Early Alert, รูปประกอบคำถาม
+- [x] **ระยะ 5** เครื่องมือครู: คลังข้อสอบ, รายงานผล, Teacher Early Alert, รูปประกอบคำถาม

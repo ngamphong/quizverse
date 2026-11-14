@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { NextResponse } from "next/server";
 import { fail, HttpError, tooMany } from "@/lib/server/http";
-import { cleanQuestion } from "@/lib/server/questions";
+import { cleanImageUrl, cleanQuestion } from "@/lib/server/questions";
 import { rateLimited } from "@/lib/server/rateLimit";
 import { currentUserId, supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
 import { SUBJECTS } from "@/lib/constants";
@@ -46,7 +46,10 @@ export async function POST(req: Request) {
     const title = String(body.title ?? "").trim().slice(0, 120) || "แบบทดสอบใหม่";
     const list = Array.isArray(body.questions) ? body.questions.slice(0, 100) : [];
     const questions = list
-      .map((x: { topic?: string }) => cleanQuestion(x, SUBJECTS.includes(String(x?.topic)) ? String(x.topic) : SUBJECTS[0]))
+      .map((x: { topic?: string; image?: unknown }) => {
+        const q = cleanQuestion(x, SUBJECTS.includes(String(x?.topic)) ? String(x.topic) : SUBJECTS[0]);
+        return q ? { ...q, image: cleanImageUrl(x.image) } : null;
+      })
       .filter(Boolean);
     if (questions.length < 3) throw new HttpError(400, "ต้องมีคำถามที่สมบูรณ์อย่างน้อย 3 ข้อ");
 
@@ -63,6 +66,7 @@ export async function POST(req: Request) {
     const { error: qErr } = await sb.from("questions").insert(
       questions.map((q: NonNullable<ReturnType<typeof cleanQuestion>>, i: number) => ({
         quiz_id: quiz!.id, position: i, topic: q.topic, level: q.level, q: q.q, choices: q.choices, answer: q.answer, explain: q.explain,
+        ...(q.image ? { image_url: q.image } : {}), // only send the column when used, so publishing works before teacher.sql
       })),
     );
     if (qErr) {

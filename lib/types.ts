@@ -8,6 +8,8 @@ export interface Question {
   qid?: string;
   /** database id (questions served by the game API) */
   id?: string;
+  /** optional picture (public URL in the question-images bucket) */
+  image?: string | null;
 }
 
 /** What a player sees before answering — no answer key, no explanation. */
@@ -17,6 +19,7 @@ export interface ClientQuestion {
   level: number;
   q: string;
   choices: string[];
+  image?: string | null;
 }
 
 export interface GameResult {

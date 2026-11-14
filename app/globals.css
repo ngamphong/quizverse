@@ -152,6 +152,8 @@ textarea { resize: vertical; min-height: 90px }
 .qcard { background: linear-gradient(135deg, var(--hero-a), var(--hero-b)); color: #fff; border-radius: var(--r-lg); padding: 28px; display: flex; flex-direction: column; gap: 10px }
 .qcard h2 { font-size: clamp(20px, 3.2vw, 28px); font-weight: 600 }
 .qmeta { display: flex; gap: 8px; flex-wrap: wrap }
+.qimg { display: block; max-width: 100%; max-height: 280px; width: auto; border-radius: var(--r-md); background: #fff; object-fit: contain; align-self: flex-start }
+.qimg.center { align-self: center }
 .qmeta .pill { background: rgba(255, 255, 255, .18); color: #fff }
 .conf { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 13px }
 .conf button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-weight: 600; font-size: 13px; cursor: pointer; color: var(--muted) }
@@ -223,7 +225,22 @@ textarea { resize: vertical; min-height: 90px }
 .badge.locked { opacity: .45 }
 .badge.locked .medal { background: var(--surface-2); color: var(--muted) }
 
+/* TEACHER */
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 2px }
+.tile b { font: 700 26px var(--f-display); color: var(--violet) }
+.alert { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--r-sm); font-size: 14px }
+.alert.topic, .alert.question { background: var(--bad-bg) }
+.alert.student { background: var(--warn-bg) }
+.alert.info { background: var(--surface-2) }
+.table-wrap { overflow-x: auto }
+table.data { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px }
+table.data th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: .4px; padding: 8px 10px; border-bottom: 1.5px solid var(--line) }
+table.data td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top }
+.qstat { border: 1.5px solid var(--line); border-radius: var(--r-md); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px }
+
 @media (max-width: 900px) {
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)) }
   .hero, .result, .join, .studio, .dna, .dna-main { grid-template-columns: 1fr }
   .feat3 { grid-template-columns: 1fr }
   .innov { grid-template-columns: repeat(2, 1fr) }

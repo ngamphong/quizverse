@@ -8,6 +8,7 @@ import { supabaseAdmin } from "../supabase/server";
 import type { AnswerRecord, ClientQuestion, Conf, GameResult, Player, Question } from "../types";
 import { HttpError } from "./http";
 import { loadProfileRow, saveLearning } from "./profiles";
+import { selectQuestions } from "./questions";
 
 /**
  * Server-authoritative game engine. The browser never sees the answer key
@@ -22,11 +23,11 @@ interface Session {
   finished_at: string | null; result: GameResult | null;
 }
 
-const toClient = (q: Question): ClientQuestion => ({ id: q.id!, topic: q.topic, level: q.level, q: q.q, choices: q.choices });
+const toClient = (q: Question): ClientQuestion => ({ id: q.id!, topic: q.topic, level: q.level, q: q.q, choices: q.choices, image: q.image ?? null });
 
 async function loadPool(quizId: string): Promise<Question[]> {
-  const { data, error } = await supabaseAdmin()
-    .from("questions").select("id, topic, level, q, choices, answer, explain").eq("quiz_id", quizId).order("position");
+  const { data, error } = await selectQuestions<Question>((cols) =>
+    supabaseAdmin().from("questions").select(cols).eq("quiz_id", quizId).order("position").returns<Question[]>());
   if (error) throw new HttpError(500, "โหลดคำถามไม่สำเร็จ");
   return (data ?? []).map((r) => ({ ...r, qid: r.id }) as Question);
 }

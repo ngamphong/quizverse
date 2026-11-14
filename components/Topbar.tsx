@@ -51,6 +51,7 @@ export default function Topbar() {
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className={active(l.href) ? "on" : ""}>{l.label}</Link>
           ))}
+          {me?.role === "teacher" && <Link href="/teacher" className={path.startsWith("/teacher") ? "on" : ""}>แดชบอร์ดครู</Link>}
         </nav>
         <div className="me-chip">
           <div className="avatar">{(name || "S").charAt(0).toUpperCase()}</div>

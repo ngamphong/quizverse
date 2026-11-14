@@ -141,11 +141,18 @@ export default function LivePlayerPage() {
         </div>
       )}
 
-      {s.state === "question" && s.question && !s.teamMode && (
+      {s.state === "question" && s.question && left <= 0 && !answered && (
+        <div className="qcard" style={{ textAlign: "center", alignItems: "center", gap: 10 }}>
+          <h2>หมดเวลาแล้ว</h2>
+          <p style={{ opacity: 0.9 }}>ข้อนี้นับเป็นไม่ได้ตอบ กำลังรอเฉลย…</p>
+        </div>
+      )}
+
+      {s.state === "question" && s.question && !s.teamMode && (left > 0 || answered) && (
         answered ? (
           <div className="qcard" style={{ textAlign: "center", alignItems: "center", gap: 10 }}>
             <h2>ส่งคำตอบแล้ว</h2>
-            <p style={{ opacity: 0.9 }}>รอครูเฉลย… (เหลือ {left} วินาที)</p>
+            <p style={{ opacity: 0.9 }}>{left > 0 ? `รอเฉลย… (เหลือ ${left} วินาที)` : "หมดเวลาแล้ว กำลังเฉลย…"}</p>
           </div>
         ) : (
           <>
@@ -166,7 +173,7 @@ export default function LivePlayerPage() {
         )
       )}
 
-      {s.state === "question" && s.question && s.teamMode && (
+      {s.state === "question" && s.question && s.teamMode && (left > 0 || answered) && (
         <>
           <QuestionHead s={s} left={left} />
           {teamLabel && <p className="small"><span className="pill">{teamLabel}</span> เลือกคำตอบพร้อมเหตุผล ดูเหตุผลของเพื่อน แล้วเปลี่ยนใจได้จนหมดเวลา</p>}

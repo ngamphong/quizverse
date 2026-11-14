@@ -8,6 +8,8 @@ import type { Draft } from "@/lib/types";
 import { useMe } from "@/lib/useMe";
 import QuestionCard, { isQuestionValid } from "@/components/QuestionCard";
 import TeacherNav from "@/components/TeacherNav";
+import SubjectPicker from "@/components/SubjectPicker";
+import { MAX_AI_QUESTIONS } from "@/lib/subjects";
 
 type Src = "file" | "topic" | "text";
 const isValid = (d: Draft) => isQuestionValid(d);
@@ -133,10 +135,13 @@ export default function StudioPage() {
               </div>
               <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
                 <label className="fld">วิชา
-                  <select id="aiSubject" value={subject} onChange={(e) => setSubject(e.target.value)}>{SUBJECTS.map((s) => <option key={s}>{s}</option>)}</select>
+                  <SubjectPicker id="aiSubject" value={subject} onChange={setSubject} />
                 </label>
                 <label className="fld">จำนวนข้อ
-                  <select id="aiCount" value={count} onChange={(e) => setCount(+e.target.value)}>{[3, 5, 8].map((n) => <option key={n} value={n}>{n}</option>)}</select>
+                  <input type="number" id="aiCount" min={1} max={MAX_AI_QUESTIONS} step={1} value={count}
+                    onChange={(e) => setCount(Math.min(MAX_AI_QUESTIONS, Math.max(1, Math.round(+e.target.value || 1))))}
+                    style={{ width: "100%", border: "1.5px solid var(--line)", borderRadius: "var(--r-sm)", padding: "10px 12px", background: "var(--surface)", color: "var(--ink)" }} />
+                  <span className="small muted" style={{ fontWeight: 400 }}>1-{MAX_AI_QUESTIONS} ข้อต่อครั้ง (สร้างซ้ำเพื่อเพิ่มได้อีก)</span>
                 </label>
                 <label className="fld">ระดับความยาก
                   <select id="aiLevel" value={level} onChange={(e) => setLevel(e.target.value as typeof level)}>
@@ -165,7 +170,7 @@ export default function StudioPage() {
               <p className="muted small">เพิ่มคำถามเปล่า กรอกคำถาม ตัวเลือก 4 ข้อ เลือกเฉลย แล้วเขียนคำอธิบายสั้นๆ ที่จะแสดงหลังผู้เรียนตอบ</p>
               <div className="row">
                 <label className="fld" style={{ flex: "1 1 200px" }}>วิชา
-                  <select id="manSubject" value={manSubject} onChange={(e) => setManSubject(e.target.value)}>{SUBJECTS.map((s) => <option key={s}>{s}</option>)}</select>
+                  <SubjectPicker id="manSubject" value={manSubject} onChange={setManSubject} />
                 </label>
                 <button className="btn btn-primary" style={{ alignSelf: "end" }} onClick={addBlank}>+ เพิ่มคำถาม</button>
               </div>

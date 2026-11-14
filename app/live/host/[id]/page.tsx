@@ -12,7 +12,7 @@ import { useLiveState, useTicker } from "@/lib/useLive";
 export default function HostPage() {
   const { id } = useParams<{ id: string }>();
   const [pin, setPin] = useState<string | null>(null);
-  const { state: s, error, refresh, secondsLeft } = useLiveState(`/api/live/state?room=${id}`, pin, { host: true });
+  const { state: s, error, refresh, secondsLeft, elapsed } = useLiveState(`/api/live/state?room=${id}`, pin, { host: true });
   const [busy, setBusy] = useState(false);
   const [origin, setOrigin] = useState("");
   const autoRevealed = useRef(-1);
@@ -35,14 +35,15 @@ export default function HostPage() {
 
   // reveal automatically when time is up (plus network grace) or everyone has answered
   const left = s?.state === "question" ? secondsLeft() : TIME_LIMIT;
+  const overtime = s?.state === "question" && elapsed() >= s.timeLimit + 1.5;
   useEffect(() => {
     if (!s || s.state !== "question" || autoRevealed.current === s.index) return;
     // team mode: members may still change their vote after reading teammates' reasons, so wait for the timer
     const allIn = !s.teamMode && s.playerCount > 0 && (s.answeredCount ?? 0) >= s.playerCount;
-    const elapsed = s.timeLimit - left;
-    if (allIn || elapsed >= s.timeLimit + 2) { autoRevealed.current = s.index; act("reveal"); }
+    // bug fix: use the real elapsed time — "left" stops at 0, so the old check never fired
+    if (allIn || overtime) { autoRevealed.current = s.index; act("reveal"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s, left]);
+  }, [s, left, overtime]);
 
   if (!s) return <p className="loading">{error || "กำลังเปิดห้องสด…"}</p>;
   const joinUrl = `${origin}/join`;

@@ -185,7 +185,23 @@ async function roster(roomId: string): Promise<Player[]> {
   return (data ?? []) as Player[];
 }
 
-export async function getState(room: Room, viewer: { host: true } | { player: Player }): Promise<LiveState> {
+/**
+ * When the time (plus grace) is up, move the room to "reveal" on the server,
+ * so a room never gets stuck if the host's screen is hidden, asleep or closed.
+ * Conditional update: only the first caller flips it.
+ */
+async function autoReveal(room: Room): Promise<Room> {
+  if (room.state !== "question" || !room.question_started_at) return room;
+  const elapsed = (Date.now() - Date.parse(room.question_started_at)) / 1000;
+  if (elapsed < TIME_LIMIT + GRACE_S) return room;
+  const { data } = await db().from("live_rooms").update({ state: "reveal" })
+    .eq("id", room.id).eq("state", "question").eq("current_index", room.current_index).select("id");
+  if (data?.length) await nudge(room.pin, "state");
+  return { ...room, state: "reveal" };
+}
+
+export async function getState(input: Room, viewer: { host: true } | { player: Player }): Promise<LiveState> {
+  const room = await autoReveal(input);
   const players = await roster(room.id);
   const qid = room.question_ids[room.current_index];
   const team = !!room.team_mode;

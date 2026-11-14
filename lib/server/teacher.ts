@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { SUBJECTS } from "../constants";
+import { normalizeSubject } from "../subjects";
 import { currentUserId, supabaseAdmin, supabaseServer } from "../supabase/server";
 import type { Question } from "../types";
 import { HttpError } from "./http";
@@ -53,7 +54,7 @@ export async function saveQuiz(quizId: string, uid: string, body: { title?: unkn
   const title = String(body.title ?? "").trim().slice(0, 120) || quiz.title;
   const raw = Array.isArray(body.questions) ? body.questions.slice(0, 100) : [];
   const items = raw.map((x: { id?: unknown; topic?: unknown; image?: unknown }) => {
-    const q = cleanQuestion(x, SUBJECTS.includes(String(x?.topic)) ? String(x.topic) : SUBJECTS[0]);
+    const q = cleanQuestion(x, normalizeSubject(x?.topic) ?? SUBJECTS[0]);
     return q ? { ...q, id: typeof x.id === "string" ? x.id : undefined, image: cleanImageUrl(x.image) } : null;
   });
   if (items.some((x) => !x)) throw new HttpError(400, "มีคำถามที่ยังกรอกไม่ครบ (คำถาม + ตัวเลือก 4 ข้อที่ไม่ซ้ำกัน)");

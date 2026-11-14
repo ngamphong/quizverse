@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import TeacherNav from "@/components/TeacherNav";
+import TeacherNav, { scrollToSection } from "@/components/TeacherNav";
 import { fmtDate } from "@/lib/format";
 import { toast } from "@/lib/storage";
 import { useMe } from "@/lib/useMe";
@@ -32,6 +32,19 @@ export default function TeacherPage() {
       .catch((e) => setErr(e instanceof Error ? e.message : "โหลดข้อมูลไม่สำเร็จ"));
   }, []);
   useEffect(() => { if (me?.role === "teacher") load(); }, [me, load]);
+
+  // /teacher#bank or #reports: scroll once the section exists, and highlight the matching menu item
+  const [section, setSection] = useState<"dashboard" | "bank" | "report">("dashboard");
+  useEffect(() => {
+    const sync = () => {
+      const h = location.hash.slice(1);
+      setSection(h === "bank" ? "bank" : h === "reports" ? "report" : "dashboard");
+      if (data && (h === "bank" || h === "reports")) scrollToSection(h);
+    };
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [data]);
 
   async function openLive(pin: string, teamMode = false) {
     setBusy(pin);
@@ -65,7 +78,7 @@ export default function TeacherPage() {
   return (
     <section className="view">
       <div className="studio">
-        <TeacherNav active="dashboard" />
+        <TeacherNav active={section} />
         <div className="view" style={{ gap: 18 }}>
           <div><h2 style={{ fontSize: 26 }}>แดชบอร์ดครู</h2><p className="muted small">ภาพรวมผลการเรียนจากทุกชุดข้อสอบของคุณ ทั้งการเล่นเดี่ยวและห้องสด</p></div>
           {err && <p className="err">{err}</p>}
@@ -86,24 +99,6 @@ export default function TeacherPage() {
                   <div key={i} className={`alert ${a.kind}`}><span className="pill" style={{ flex: "none" }}>{ALERT_LABEL[a.kind]}</span><span>{a.text}</span></div>
                 )) : <div className="alert info"><span className="pill ok">ปกติ</span><span>ยังไม่พบหัวข้อหรือข้อที่น่ากังวล</span></div>}
               </div>
-
-              {data.topics.length > 0 && (
-                <div className="card">
-                  <h3 style={{ fontSize: 16, marginBottom: 12 }}>ความแม่นยำรายหัวข้อ (ทั้งห้อง)</h3>
-                  <div className="bars">
-                    {data.topics.map((t) => {
-                      const color = t.pct >= 75 ? "var(--ok)" : t.pct >= 50 ? "var(--warn)" : "var(--bad)";
-                      return (
-                        <div className="bar" key={t.topic} style={{ gridTemplateColumns: "110px 1fr 90px" }}>
-                          <span>{t.topic}</span>
-                          <div className="track"><i style={{ width: `${t.pct}%`, background: color }} /></div>
-                          <b className="num" style={{ textAlign: "right" }}>{t.pct}% <span className="small muted">({t.total})</span></b>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               <div className="card" id="bank" style={{ display: "flex", flexDirection: "column", gap: 12, scrollMarginTop: 90 }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
@@ -129,19 +124,51 @@ export default function TeacherPage() {
                 ))}
               </div>
 
-              {data.recent.length > 0 && (
-                <div className="card">
-                  <h3 style={{ fontSize: 16, marginBottom: 10 }}>การเล่นล่าสุด</h3>
-                  <div className="table-wrap">
-                    <table className="data">
-                      <thead><tr><th>ผู้เล่น</th><th>แบบ</th><th>เวลา</th><th>ถูก</th><th>คะแนน</th></tr></thead>
-                      <tbody>{data.recent.map((a) => (
-                        <tr key={a.key}><td>{a.name}</td><td>{a.source}</td><td>{fmtDate(a.at)}</td><td className="num">{a.correct}/{a.total}</td><td className="num">{a.score.toLocaleString()}</td></tr>
-                      ))}</tbody>
-                    </table>
-                  </div>
+              <div id="reports" className="view" style={{ gap: 18, scrollMarginTop: 90 }}>
+                <div className="card" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <h3 style={{ fontSize: 18 }}>รายงานผล</h3>
+                  <p className="small muted">เลือกชุดข้อสอบเพื่อดูผลรายข้อ คำตอบผิดที่พบบ่อย และผลรายคน</p>
+                  {!data.quizzes.length && <p className="small muted">ยังไม่มีชุดข้อสอบ</p>}
+                  {data.quizzes.map((z) => (
+                    <Link key={z.id} href={`/teacher/quiz/${z.id}`} className="room" style={{ textDecoration: "none", color: "inherit" }}>
+                      <span style={{ minWidth: 0 }}><b>{z.title}</b> <span className="small muted">· เล่นเดี่ยว {z.soloPlays} ครั้ง · ห้องสด {z.liveRooms} ห้อง</span></span>
+                      <span className="btn btn-soft btn-sm">ดูรายงาน →</span>
+                    </Link>
+                  ))}
                 </div>
-              )}
+
+                {data.topics.length > 0 && (
+                  <div className="card">
+                    <h3 style={{ fontSize: 16, marginBottom: 12 }}>ความแม่นยำรายหัวข้อ (ทั้งห้อง)</h3>
+                    <div className="bars">
+                      {data.topics.map((t) => {
+                        const color = t.pct >= 75 ? "var(--ok)" : t.pct >= 50 ? "var(--warn)" : "var(--bad)";
+                        return (
+                          <div className="bar" key={t.topic} style={{ gridTemplateColumns: "110px 1fr 90px" }}>
+                            <span>{t.topic}</span>
+                            <div className="track"><i style={{ width: `${t.pct}%`, background: color }} /></div>
+                            <b className="num" style={{ textAlign: "right" }}>{t.pct}% <span className="small muted">({t.total})</span></b>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {data.recent.length > 0 && (
+                  <div className="card">
+                    <h3 style={{ fontSize: 16, marginBottom: 10 }}>การเล่นล่าสุด</h3>
+                    <div className="table-wrap">
+                      <table className="data">
+                        <thead><tr><th>ผู้เล่น</th><th>แบบ</th><th>เวลา</th><th>ถูก</th><th>คะแนน</th></tr></thead>
+                        <tbody>{data.recent.map((a) => (
+                          <tr key={a.key}><td>{a.name}</td><td>{a.source}</td><td>{fmtDate(a.at)}</td><td className="num">{a.correct}/{a.total}</td><td className="num">{a.score.toLocaleString()}</td></tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>

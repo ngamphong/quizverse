@@ -5,6 +5,7 @@ import { cleanImageUrl, cleanQuestion } from "@/lib/server/questions";
 import { rateLimited } from "@/lib/server/rateLimit";
 import { currentUserId, supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
 import { SUBJECTS } from "@/lib/constants";
+import { normalizeSubject } from "@/lib/subjects";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     const list = Array.isArray(body.questions) ? body.questions.slice(0, 100) : [];
     const questions = list
       .map((x: { topic?: string; image?: unknown }) => {
-        const q = cleanQuestion(x, SUBJECTS.includes(String(x?.topic)) ? String(x.topic) : SUBJECTS[0]);
+        const q = cleanQuestion(x, normalizeSubject(x?.topic) ?? SUBJECTS[0]);
         return q ? { ...q, image: cleanImageUrl(x.image) } : null;
       })
       .filter(Boolean);

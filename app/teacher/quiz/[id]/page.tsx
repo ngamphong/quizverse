@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import QuestionCard, { isQuestionValid } from "@/components/QuestionCard";
 import TeacherNav from "@/components/TeacherNav";
+import SubjectPicker from "@/components/SubjectPicker";
 import { KEYS, LEVEL, SUBJECTS } from "@/lib/constants";
 import { fmtDate } from "@/lib/format";
 import { toast } from "@/lib/storage";
@@ -155,7 +156,7 @@ export default function TeacherQuizPage() {
                 ))}
               </div>
               <div className="row">
-                <select aria-label="วิชาของข้อใหม่" style={{ width: "auto" }} value={newSubject} onChange={(e) => setNewSubject(e.target.value)}>{SUBJECTS.map((s) => <option key={s}>{s}</option>)}</select>
+                <div style={{ minWidth: 220 }}><SubjectPicker id="newSubject" value={newSubject} onChange={setNewSubject} extra={qs.map((q) => q.topic)} /></div>
                 <button className="btn btn-soft" onClick={() => { setQs((l) => [...l!, { topic: newSubject, level: 1, q: "", choices: ["", "", "", ""], answer: 0, explain: "" }]); setDirty(true); }}>+ เพิ่มคำถาม</button>
               </div>
             </>

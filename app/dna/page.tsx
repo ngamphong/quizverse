@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import RadarChart from "@/components/RadarChart";
 import { studyCoach, useAiReady } from "@/lib/ai";
 import { DAY, INTERVALS, SUBJECTS } from "@/lib/constants";
+import { withExtraSubjects } from "@/lib/subjects";
 import { emptyProfile, lvOf, pct, XP_PER_LEVEL } from "@/lib/profile";
 import { fetchProfile, storeProfile } from "@/lib/profileStore";
 import { toast } from "@/lib/storage";
@@ -23,8 +24,10 @@ export default function DnaPage() {
   }, []);
   if (!p) return <p className="loading">กำลังโหลดโปรไฟล์…</p>;
 
-  const vals = SUBJECTS.map((s) => pct(p.stats[s]));
-  const ranked = SUBJECTS.map((s, i) => ({ s, v: vals[i], n: p.stats[s]?.total || 0 })).filter((x) => x.n);
+  // core subjects + any extra subjects a teacher created that have answers
+  const subs = withExtraSubjects(Object.keys(p.stats).filter((s) => (p.stats[s]?.total ?? 0) > 0));
+  const vals = subs.map((s) => pct(p.stats[s]));
+  const ranked = subs.map((s, i) => ({ s, v: vals[i], n: p.stats[s]?.total || 0 })).filter((x) => x.n);
   const strong = ranked.filter((x) => x.v >= 75).sort((a, b) => b.v - a.v);
   const weak = ranked.filter((x) => x.v < 70).sort((a, b) => a.v - b.v);
   const lv = lvOf(p.xp), base = (lv - 1) * XP_PER_LEVEL;
@@ -50,7 +53,7 @@ export default function DnaPage() {
 
   async function askCoach() {
     // scores only — the student's name is never sent to the AI
-    const subjects = SUBJECTS.map((s) => {
+    const subjects = subs.map((s) => {
       const st = p!.stats[s];
       return `${s}: ${pct(st)}% (${st?.total || 0} ข้อ, ผลรายเกม ${(st?.hist || []).join(", ") || "-"})`;
     }).join("\n");
@@ -95,7 +98,7 @@ export default function DnaPage() {
           <div className="dna-main">
             <div className="card radar">
               <h3 style={{ fontSize: 16, marginBottom: 6 }}>ความสามารถรายหัวข้อ</h3>
-              <RadarChart labels={SUBJECTS} values={vals} />
+              <RadarChart labels={subs} values={vals} />
             </div>
             <div className="card sw">
               <h3 style={{ fontSize: 16 }}>จุดแข็ง และจุดที่ควรพัฒนา</h3>
@@ -118,7 +121,7 @@ export default function DnaPage() {
           <div className="card">
             <h3 style={{ fontSize: 16, marginBottom: 12 }}>ความแม่นยำรายวิชา</h3>
             <div className="bars">
-              {SUBJECTS.map((s, i) => {
+              {subs.map((s, i) => {
                 const v = vals[i], st = p.stats[s] || { total: 0, hist: [] }, h = st.hist || [];
                 const trend = h.length >= 2 ? h[h.length - 1] - h[0] : 0;
                 const color = v >= 75 ? "var(--ok)" : v >= 60 ? "var(--warn)" : "var(--bad)";

@@ -37,7 +37,8 @@ export function useLiveState(url: string | null, pin: string | null, opts: { hos
   useEffect(() => {
     if (!url) return;
     refresh();
-    const poll = setInterval(refresh, opts.host ? 2000 : 3000);
+    // polling also lets the server auto-reveal when time is up, even if the host's screen is asleep
+    const poll = setInterval(refresh, opts.host ? 2000 : 2500);
     return () => clearInterval(poll);
   }, [url, refresh, opts.host]);
 
@@ -55,14 +56,19 @@ export function useLiveState(url: string | null, pin: string | null, opts: { hos
     return () => { if (t) clearTimeout(t); sb.removeChannel(ch); };
   }, [pin, refresh, opts.host, opts.answers]);
 
-  /** Seconds left on the current question, using server time. */
-  const secondsLeft = useCallback(() => {
-    if (!state?.startedAt) return state?.timeLimit ?? 20;
-    const elapsed = (Date.now() + offset.current - state.startedAt) / 1000;
-    return Math.max(0, Math.ceil(state.timeLimit - elapsed));
+  /** Seconds since the current question opened, using server time (not capped). */
+  const elapsed = useCallback(() => {
+    if (!state?.startedAt) return 0;
+    return (Date.now() + offset.current - state.startedAt) / 1000;
   }, [state]);
 
-  return { state, error, refresh, secondsLeft };
+  /** Seconds left on the current question (0 when time is up). */
+  const secondsLeft = useCallback(() => {
+    if (!state?.startedAt) return state?.timeLimit ?? 20;
+    return Math.max(0, Math.ceil(state.timeLimit - elapsed()));
+  }, [state, elapsed]);
+
+  return { state, error, refresh, secondsLeft, elapsed };
 }
 
 /** Re-renders every 250 ms while `active`, for countdowns. */

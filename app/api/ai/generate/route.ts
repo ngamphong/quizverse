@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SUBJECTS } from "@/lib/constants";
+import { MAX_AI_QUESTIONS, normalizeSubject } from "@/lib/subjects";
 import { readUpload, type Source } from "@/lib/server/extract";
 import { AiError, callGemini, MODEL_FAST, MODEL_MAIN, parseJson } from "@/lib/server/gemini";
 import { cleanQuestion, QUESTION_SCHEMA } from "@/lib/server/questions";
@@ -25,11 +25,11 @@ export async function POST(req: Request) {
   if (rateLimited(req)) return tooMany();
   try {
     const form = await req.formData();
-    const subject = String(form.get("subject") ?? "");
-    const count = Math.min(Math.max(Number(form.get("count")) || 5, 1), 10);
+    const subject = normalizeSubject(form.get("subject"));
+    const count = Math.min(Math.max(Number(form.get("count")) || 5, 1), MAX_AI_QUESTIONS);
     const level = String(form.get("level") ?? "mix");
     const mode = String(form.get("mode") ?? "topic");
-    if (!SUBJECTS.includes(subject)) throw new AiError(400, "วิชาไม่ถูกต้อง");
+    if (!subject) throw new AiError(400, "กรุณาระบุวิชา");
     if (!LEVEL_RULE[level]) throw new AiError(400, "ระดับความยากไม่ถูกต้อง");
 
     let source: Source;
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       fallback: MODEL_FAST,
       parts,
       schema: { type: "object", properties: { questions: { type: "array", items: QUESTION_SCHEMA } }, required: ["questions"] },
-      maxOutputTokens: 8192,
+      maxOutputTokens: 4000 + count * 700, // Thai text is token-heavy; room for up to 15 questions
       temperature: 0.4,
     });
     const data = parseJson<{ questions?: unknown[] }>(raw);
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
     const thai = /[฀-๿]/;
     const questions = (data.questions ?? [])
       .map((x) => cleanQuestion(x, subject))
-      .filter((q): q is NonNullable<typeof q> => !!q && (subject === "ภาษาอังกฤษ" || thai.test(q.q + q.explain)));
+      .filter((q): q is NonNullable<typeof q> => !!q && (/อังกฤษ|english/i.test(subject) || thai.test(q.q + q.explain)));
     if (!questions.length) throw new AiError(502, "AI สร้างข้อสอบที่ใช้ได้ไม่สำเร็จ กดสร้างอีกครั้ง หรือปรับเนื้อหา");
     return NextResponse.json({ questions });
   } catch (e) {

@@ -6,6 +6,26 @@ export interface Question {
   answer: number; // index 0-3
   explain: string;
   qid?: string;
+  /** database id (questions served by the game API) */
+  id?: string;
+}
+
+/** What a player sees before answering — no answer key, no explanation. */
+export interface ClientQuestion {
+  id: string;
+  topic: string;
+  level: number;
+  q: string;
+  choices: string[];
+}
+
+export interface GameResult {
+  name: string;
+  score: number;
+  total: number;
+  maxLevel: number;
+  answers: AnswerRecord[];
+  players: Player[];
 }
 
 export interface Quiz {

@@ -3,8 +3,9 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AI_OFF_NOTE, generateQuestions, useAiReady } from "@/lib/ai";
 import { KEYS, LEVEL, SUBJECTS } from "@/lib/constants";
-import { loadDrafts, loadQuizzes, saveDrafts, saveQuizzes, toast } from "@/lib/storage";
+import { loadDrafts, saveDrafts, toast } from "@/lib/storage";
 import type { Draft } from "@/lib/types";
+import { useMe } from "@/lib/useMe";
 
 type Src = "file" | "topic" | "text";
 const isValid = (d: Draft) => d.q.trim() !== "" && d.choices.every((c) => c.trim() !== "");
@@ -24,6 +25,8 @@ export default function StudioPage() {
   const [fileInfo, setFileInfo] = useState("รองรับ .pdf .docx .txt .md ขนาดไม่เกิน 4 MB");
   const [busy, setBusy] = useState(false);
   const aiReady = useAiReady();
+  const { me } = useMe();
+  const [publishing, setPublishing] = useState(false);
   const [title, setTitle] = useState("ทบทวนบทเรียน");
   const [publishErr, setPublishErr] = useState("");
   const [publishedPin, setPublishedPin] = useState("");
@@ -74,19 +77,27 @@ export default function StudioPage() {
     }
   }
 
-  function publish() {
+  async function publish() {
     const ok = drafts.filter((d) => d.approved && isValid(d));
     setPublishErr("");
     if (ok.length < 3) { setPublishErr(`ต้องมีคำถามที่อนุมัติแล้วอย่างน้อย 3 ข้อ (ตอนนี้ ${ok.length} ข้อ) ข้อที่ยังไม่ได้ตรวจจะไม่ถูกเผยแพร่`); return; }
-    const all = loadQuizzes();
-    let pin: string;
-    do { pin = String(Math.floor(100000 + Math.random() * 900000)); } while (all.some((q) => q.pin === pin));
-    all.push({ pin, title: title.trim() || "แบบทดสอบใหม่", questions: ok.map(({ topic, level, q, choices, answer, explain }) => ({ topic, level, q, choices, answer, explain })) });
-    saveQuizzes(all);
-    const pending = drafts.length - ok.length;
-    setDrafts((ds) => ds.filter((d) => !(d.approved && isValid(d))));
-    setPublishedPin(pin);
-    toast(`เผยแพร่ ${ok.length} ข้อแล้ว` + (pending ? ` (ข้อที่ยังไม่อนุมัติ ${pending} ข้อยังอยู่ในร่าง)` : ""));
+    setPublishing(true);
+    try {
+      const r = await fetch("/api/quizzes", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title, questions: ok.map(({ topic, level, q, choices, answer, explain }) => ({ topic, level, q, choices, answer, explain })) }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setPublishErr(d.error || "เผยแพร่ไม่สำเร็จ"); return; }
+      const pending = drafts.length - ok.length;
+      setDrafts((ds) => ds.filter((x) => !(x.approved && isValid(x))));
+      setPublishedPin(d.pin);
+      toast(`เผยแพร่ ${d.count} ข้อแล้ว` + (pending ? ` (ข้อที่ยังไม่อนุมัติ ${pending} ข้อยังอยู่ในร่าง)` : ""));
+    } catch {
+      setPublishErr("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง");
+    } finally {
+      setPublishing(false);
+    }
   }
 
   const approved = drafts.filter((d) => d.approved).length;
@@ -215,7 +226,12 @@ export default function StudioPage() {
 
           <div className="card publish-bar">
             <label className="fld" style={{ flex: "1 1 260px" }}>ชื่อชุดข้อสอบ<input type="text" id="quizTitle" value={title} onChange={(e) => setTitle(e.target.value)} /></label>
-            <button className="btn btn-primary" onClick={publish}>เผยแพร่และสร้าง PIN</button>
+            <button className="btn btn-primary" onClick={publish} disabled={publishing || me?.role !== "teacher"}>{publishing ? "กำลังเผยแพร่…" : "เผยแพร่และสร้าง PIN"}</button>
+            {me?.role !== "teacher" && (
+              <p className="small muted" style={{ flexBasis: "100%" }}>
+                ร่างคำถามได้ทุกคน แต่การเผยแพร่เป็นห้องเกมต้อง <Link href="/login">เข้าสู่ระบบด้วยบัญชีครู</Link>
+              </p>
+            )}
             <p className="err" style={{ flexBasis: "100%" }}>{publishErr}</p>
             {publishedPin && (
               <div style={{ flexBasis: "100%", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>

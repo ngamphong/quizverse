@@ -1,372 +1,169 @@
 "use client";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useReducer, useRef, useState } from "react";
-import { adjustLevel, pickQuestion } from "@/lib/adaptive";
-import { explainMistake, useAiReady } from "@/lib/ai";
-import { CONF_TXT, DAY, KEYS, LEVEL, ROUNDS, TIME_LIMIT } from "@/lib/constants";
-import { gradeAnswer } from "@/lib/grading";
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ArenaView, { type Feedback } from "@/components/ArenaView";
+import MistakeHelper from "@/components/MistakeHelper";
+import ResultView from "@/components/ResultView";
+import { LEVEL, TIME_LIMIT } from "@/lib/constants";
 import { applyToProfile } from "@/lib/profile";
-import { loadProfile, loadQuizzes, saveProfile, toast } from "@/lib/storage";
-import type { AnswerRecord, Conf, Player, Question, Quiz } from "@/lib/types";
+import { loadProfile, saveProfile } from "@/lib/storage";
+import type { ClientQuestion, Conf, GameResult, Question } from "@/lib/types";
+import { useMe } from "@/lib/useMe";
 
-type Phase = "loading" | "notfound" | "question" | "feedback" | "result";
+type Phase = "loading" | "error" | "question" | "feedback" | "result";
 
-interface Game {
-  quiz: Quiz;
-  practice: boolean;
-  pool: Question[];
-  asked: Question[];
-  answers: AnswerRecord[];
-  level: number;
-  prevLevel: number;
-  maxLevel: number;
-  streak: number;
-  total: number;
-  score: number;
-  conf: Conf;
-  timeLeft: number;
-  cur: Question | null;
+async function api<T>(path: string, body: object): Promise<T> {
+  let r: Response;
+  try {
+    r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    throw new Error("เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่");
+  }
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || "เกิดข้อผิดพลาด");
+  return d as T;
 }
 
-const BOTS: [string, number][] = [["Mild", 0.82], ["Bank", 0.74], ["Ploy", 0.66], ["Tong", 0.55], ["Fah", 0.48]];
-function botScores(n: number): Player[] {
-  return BOTS.map(([name, skill]) => {
-    let s = 0;
-    for (let i = 0; i < n; i++) if (Math.random() < skill) s += Math.round(500 + 500 * Math.random() * 0.9) + Math.floor(Math.random() * 2) * 100;
-    return { name, score: s, bot: true };
-  });
-}
+interface Start { sessionId: string; token: string; title: string; pin: string; total: number; index: number; score: number; question: ClientQuestion }
+interface Answered { correct: boolean; choice: number; answer: number; explain: string; points: number; score: number; level: number; prevLevel: number; done: boolean; question: Question }
+type Next = { done: false; index: number; total: number; score: number; question: ClientQuestion } | { done: true; result: GameResult };
 
+/** Live game: every answer is graded and timed by the server (/api/game/*). */
 export default function PlayPage() {
   const { pin } = useParams<{ pin: string }>();
-  const router = useRouter();
-  const gRef = useRef<Game | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const phaseRef = useRef<Phase>("loading");
+  const { me, loading: meLoading } = useMe();
   const [phase, setPhaseState] = useState<Phase>("loading");
-  const [, force] = useReducer((x: number) => x + 1, 0);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [playerName, setPlayerName] = useState("");
-  const [showReview, setShowReview] = useState(false);
-  const [aiText, setAiText] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
-  const [practiceQ, setPracticeQ] = useState<Question | null>(null);
-  const [practicePick, setPracticePick] = useState<number | null>(null);
-  const aiReady = useAiReady();
+  const [err, setErr] = useState("");
+  const [q, setQ] = useState<ClientQuestion | null>(null);
+  const [index, setIndex] = useState(1);
+  const [total, setTotal] = useState(1);
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
+  const [conf, setConf] = useState<Conf>("sure");
+  const [fb, setFb] = useState<Feedback | null>(null);
+  const [answered, setAnswered] = useState<Answered | null>(null);
+  const [result, setResult] = useState<GameResult | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const session = useRef<{ id: string; token: string } | null>(null);
+  const phaseRef = useRef<Phase>("loading");
+  const confRef = useRef<Conf>("sure");
+  const busyRef = useRef(false);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const started = useRef(false);
   const nextBtn = useRef<HTMLButtonElement>(null);
 
   const setPhase = (p: Phase) => { phaseRef.current = p; setPhaseState(p); };
-  const stopTimer = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
+  const stopTimer = () => { if (timer.current) { clearInterval(timer.current); timer.current = null; } };
 
-  function nextQuestion() {
-    const g = gRef.current!;
-    if (g.asked.length >= g.total) return finish();
-    const q = pickQuestion(g.pool, g.asked, g.level, g.practice);
-    g.cur = q;
-    g.asked.push(q);
-    g.maxLevel = Math.max(g.maxLevel, q.level);
-    g.conf = "sure";
-    g.timeLeft = TIME_LIMIT;
-    setAiText("");
-    setPracticeQ(null);
-    setPracticePick(null);
+  const submit = useCallback(async (choice: number) => {
+    if (phaseRef.current !== "question" || busyRef.current || !session.current) return;
+    busyRef.current = true; setBusy(true);
+    stopTimer();
+    try {
+      const a = await api<Answered>("/api/game/answer", { sessionId: session.current.id, token: session.current.token, choice, conf: confRef.current });
+      setAnswered(a);
+      setScore(a.score);
+      setFb({
+        correct: a.correct, choice: a.choice, answer: a.answer, points: a.points, explain: a.explain,
+        guessed: a.correct && confRef.current === "guess",
+        levelUp: a.level > a.prevLevel,
+        levelMsg: a.level > a.prevLevel ? `ข้อถัดไป: ระดับ${LEVEL[a.level]} ↑` : a.level < a.prevLevel ? `ข้อถัดไป: ระดับ${LEVEL[a.level]} ↓` : "",
+      });
+      setPhase("feedback");
+      setTimeout(() => nextBtn.current?.focus({ preventScroll: true }), 0);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "ส่งคำตอบไม่สำเร็จ");
+      setPhase("error");
+    } finally {
+      busyRef.current = false; setBusy(false);
+    }
+  }, []);
+
+  const showQuestion = useCallback((question: ClientQuestion) => {
+    setQ(question); setFb(null); setAnswered(null);
+    confRef.current = "sure"; setConf("sure");
+    setTimeLeft(TIME_LIMIT);
     setPhase("question");
-    force();
     stopTimer();
-    timerRef.current = setInterval(() => {
-      const gg = gRef.current;
-      if (!gg) return;
-      gg.timeLeft = Math.max(0, gg.timeLeft - 1);
-      force();
-      if (gg.timeLeft <= 0) answer(-1);
-    }, 1000);
-  }
+    const until = Date.now() + TIME_LIMIT * 1000;
+    timer.current = setInterval(() => {
+      const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      setTimeLeft(left);
+      if (left <= 0) submit(-1);
+    }, 250);
+  }, [submit]);
 
-  function answer(i: number) {
-    const g = gRef.current;
-    if (!g || !g.cur || phaseRef.current !== "question") return;
-    stopTimer();
-    const q = g.cur;
-    const res = gradeAnswer(q, i, g.timeLeft);
-    g.score += res.points;
-    g.prevLevel = g.level;
-    if (!g.practice) {
-      const a = adjustLevel(g.level, g.streak, res.correct);
-      g.level = a.level;
-      g.streak = a.streak;
-    }
-    g.answers.push({ q, choice: i, correct: res.correct, points: res.points, conf: i < 0 ? "none" : g.conf });
-    setPhase("feedback");
-    force();
-    setTimeout(() => nextBtn.current?.focus({ preventScroll: true }), 0);
-  }
-
-  function finish() {
-    stopTimer();
-    const g = gRef.current!;
-    const profile = applyToProfile(loadProfile(), g.answers, g.practice);
-    saveProfile(profile);
-    if (g.practice) {
-      const r = g.answers.filter((a) => a.correct && a.conf !== "guess").length;
-      toast(`ฝึกทบทวนเสร็จ ถูก ${r}/${g.answers.length} ข้อ แผนทบทวนอัปเดตแล้ว`);
-      router.push("/dna");
-      return;
-    }
-    setPlayerName(profile.name);
-    setPlayers([...botScores(g.total), { name: profile.name, score: g.score, me: true }].sort((a, b) => b.score - a.score));
-    setPhase("result");
-  }
-
-  // start the game when the page opens
+  // start once (guards against React StrictMode running effects twice in dev)
   useEffect(() => {
-    let quiz: Quiz | undefined;
-    const practice = pin === "practice";
-    if (practice) {
-      const p = loadProfile();
-      const now = Date.now();
-      let items = p.revision.filter((r) => r.due <= now);
-      if (!items.length) items = [...p.revision];
-      if (items.length) quiz = { pin: "—", title: "ฝึกทบทวน", questions: items.slice(0, 8).map((r) => ({ ...r })) };
-    } else {
-      quiz = loadQuizzes().find((q) => q.pin === pin);
-    }
-    if (!quiz) { setPhase("notfound"); return; }
-    const pool = quiz.questions.map((q) => ({ ...q, qid: q.qid || q.q }));
-    gRef.current = {
-      quiz, practice, pool, asked: [], answers: [], level: practice ? 1 : 2, prevLevel: 2, maxLevel: 1, streak: 0,
-      total: practice ? pool.length : Math.min(ROUNDS, pool.length), score: 0, conf: "sure", timeLeft: TIME_LIMIT, cur: null,
-    };
-    nextQuestion();
-    return () => { stopTimer(); gRef.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pin]);
+    if (started.current || meLoading) return;
+    started.current = true;
+    api<Start>("/api/game/start", { pin, nickname: loadProfile().name })
+      .then((s) => {
+        session.current = { id: s.sessionId, token: s.token };
+        setTotal(s.total); setIndex(s.index); setScore(s.score);
+        showQuestion(s.question);
+      })
+      .catch((e) => { setErr(e instanceof Error ? e.message : "เริ่มเกมไม่สำเร็จ"); setPhase("error"); });
+  }, [pin, meLoading, showQuestion]);
 
-  // keyboard: A-D / 1-4 to answer, Enter for next
+  useEffect(() => () => stopTimer(), []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (/input|textarea|select/i.test((e.target as HTMLElement).tagName)) return;
       const k = "abcd1234".indexOf(e.key.toLowerCase());
-      if (k >= 0 && phaseRef.current === "question") answer(k % 4);
+      if (k >= 0 && phaseRef.current === "question") submit(k % 4);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [submit]);
 
-  async function askAI() {
-    const g = gRef.current;
-    const last = g?.answers[g.answers.length - 1];
-    if (!last) return;
-    setAiBusy(true);
-    setAiText("AI กำลังคิด…");
+  async function next() {
+    if (!session.current || busyRef.current) return;
+    busyRef.current = true; setBusy(true);
     try {
-      const r = await explainMistake(last.q, last.choice);
-      if (gRef.current?.answers[gRef.current.answers.length - 1] !== last) return; // moved on meanwhile
-      setAiText(r.explanation);
-      setPracticeQ(r.practice);
-      setPracticePick(null);
-    } catch (e) {
-      setAiText(e instanceof Error ? e.message : "เชื่อมต่อ AI ไม่สำเร็จ");
-    } finally {
-      setAiBusy(false);
-    }
-  }
-
-  /** Practice question from the Mistake Explainer: a wrong answer goes into Smart Revision. */
-  function answerPractice(i: number) {
-    if (!practiceQ || practicePick !== null) return;
-    setPracticePick(i);
-    if (i !== practiceQ.answer) {
-      const p = loadProfile();
-      const qid = "ai:" + practiceQ.q;
-      if (!p.revision.some((r) => r.qid === qid)) {
-        p.revision.push({ ...practiceQ, qid, step: 0, due: Date.now() + DAY, reason: "โจทย์ฝึกจาก AI" });
-        saveProfile(p);
+      const n = await api<Next>("/api/game/next", { sessionId: session.current.id, token: session.current.token });
+      if (n.done) {
+        // signed-in players: the server already updated Learning DNA; guests keep it in this browser
+        if (!me) saveProfile(applyToProfile(loadProfile(), n.result.answers, false));
+        setResult(n.result);
+        setPhase("result");
+      } else {
+        setIndex(n.index); setTotal(n.total); setScore(n.score);
+        showQuestion(n.question);
       }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "โหลดข้อถัดไปไม่สำเร็จ");
+      setPhase("error");
+    } finally {
+      busyRef.current = false; setBusy(false);
     }
   }
 
   if (phase === "loading") return <p className="loading">กำลังเตรียมห้องเกม…</p>;
-  if (phase === "notfound")
+  if (phase === "error")
     return (
       <section className="view">
         <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "flex-start" }}>
-          <h2 style={{ fontSize: 22 }}>{pin === "practice" ? "ยังไม่มีข้อที่ต้องทบทวน" : "ไม่พบห้องเกมนี้"}</h2>
-          <p className="muted">{pin === "practice" ? "เล่นเกมก่อน ข้อที่ตอบผิดจะถูกเพิ่มเข้าแผนทบทวนอัตโนมัติ" : "ตรวจสอบ PIN กับผู้สอนอีกครั้ง"}</p>
-          <Link className="btn btn-primary" href="/join">ไปหน้าเข้าร่วมเกม</Link>
+          <h2 style={{ fontSize: 22 }}>เล่นต่อไม่ได้</h2>
+          <p className="muted">{err}</p>
+          <Link className="btn btn-primary" href="/join">กลับไปหน้าเข้าร่วมเกม</Link>
         </div>
       </section>
     );
-
-  const g = gRef.current!;
-
-  if (phase === "result") {
-    const top = players.slice(0, 3);
-    const right = g.answers.filter((a) => a.correct).length, n = g.answers.length;
-    const guessed = g.answers.filter((a) => a.correct && a.conf === "guess").length;
-    const sureWrong = g.answers.filter((a) => !a.correct && a.conf === "sure").length;
-    const notes = [guessed ? `ตอบถูกแต่เดา ${guessed} ข้อ` : "", sureWrong ? `มั่นใจแต่ตอบผิด ${sureWrong} ข้อ (อาจเข้าใจคลาดเคลื่อน)` : ""].filter(Boolean);
-    return (
-      <section className="view">
-        <div className="result">
-          <div className="podium-wrap">
-            <h2 style={{ fontSize: 26 }}>ผลการเล่นเกม</h2>
-            <div className="podium">
-              {[1, 0, 2].filter((i) => top[i]).map((i) => (
-                <div key={i} className={`pod p${i + 1}${top[i].me ? " me" : ""}`}>
-                  <span className="who">{top[i].name}</span>
-                  <span className="pts num">{top[i].score.toLocaleString()} คะแนน</span>
-                  <div className="block">{i + 1}</div>
-                </div>
-              ))}
-            </div>
-            <div className="lb">
-              {players.map((p, i) => (
-                <div key={p.name + i} className={p.me ? "me" : ""}>
-                  <span>{i + 1}. {p.name}{p.bot && <span style={{ opacity: 0.7, fontSize: 12 }}> (จำลอง)</span>}</span>
-                  <b className="num">{p.score.toLocaleString()}</b>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="card summary">
-            <p className="eyebrow">สรุปของคุณ</p>
-            <div className="row"><div className="avatar">{playerName.charAt(0).toUpperCase()}</div><b style={{ fontFamily: "var(--f-display)" }}>{playerName}</b></div>
-            <p className="big-score num">{g.score.toLocaleString()} คะแนน</p>
-            <div>
-              <div className="srow"><span>ตอบถูก</span><b className="num">{right} ข้อ</b></div>
-              <div className="srow"><span>ตอบผิด</span><b className="num">{n - right} ข้อ</b></div>
-              <div className="srow"><span>ความแม่นยำ</span><b className="num">{Math.round((right / n) * 100)}%</b></div>
-              <div className="srow"><span>ระดับสูงสุดที่ไปถึง</span><b>{LEVEL[g.maxLevel]}</b></div>
-            </div>
-            <p className="small">
-              {notes.length
-                ? <><span className="pill warn">วิเคราะห์ความมั่นใจ</span> {notes.join(" · ")} ระบบเพิ่มข้อเหล่านี้เข้าแผนทบทวนแล้ว</>
-                : <><span className="pill ok">วิเคราะห์ความมั่นใจ</span> ความมั่นใจของคุณสอดคล้องกับผลการตอบ</>}
-            </p>
-            <div className="row">
-              <button className="btn btn-ghost" onClick={() => setShowReview((v) => !v)}>{showReview ? "ซ่อนเฉลย" : "ดูเฉลยและคำอธิบาย"}</button>
-              <Link className="btn btn-primary" href="/dna">วิเคราะห์การเรียนรู้</Link>
-            </div>
-          </div>
-        </div>
-        {showReview && (
-          <div className="card review">
-            <h3 style={{ fontSize: 18 }}>เฉลยและคำอธิบาย</h3>
-            {g.answers.map((a, i) => (
-              <div key={i} className={"rv " + (a.correct ? "okk" : "wrong")}>
-                <div className="row" style={{ gap: 8 }}>
-                  <b>ข้อ {i + 1}</b><span className="pill">{a.q.topic}</span><span className="pill">{LEVEL[a.q.level]}</span>
-                  <span className={"pill " + (a.correct ? "ok" : "bad")}>{a.correct ? "ถูก" : "ผิด"}</span>
-                  <span className="small muted">ความมั่นใจ: {CONF_TXT[a.conf]}</span>
-                </div>
-                <p style={{ fontWeight: 600 }}>{a.q.q}</p>
-                <p className="small">คุณตอบ: {a.choice < 0 ? "ไม่ได้ตอบ" : a.q.choices[a.choice]} · เฉลย: <b>{a.q.choices[a.q.answer]}</b></p>
-                <p className="small muted">{a.q.explain}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    );
-  }
-
-  // question / feedback
-  const q = g.cur!;
-  const last = phase === "feedback" ? g.answers[g.answers.length - 1] : null;
-  let explain = "";
-  if (last) {
-    explain = (last.correct ? "" : `คำตอบที่ถูกคือ ${KEYS[q.answer]}. ${q.choices[q.answer]} — `) + q.explain;
-    if (last.correct && last.conf === "guess") explain += " (คุณเลือกว่า \"เดา\" ระบบจะนำข้อนี้กลับมาให้ทบทวนอีกครั้ง)";
-  }
-  const levelMsg = !last || g.practice ? "" : g.level > g.prevLevel ? `ข้อถัดไป: ระดับ${LEVEL[g.level]} ↑` : g.level < g.prevLevel ? `ข้อถัดไป: ระดับ${LEVEL[g.level]} ↓` : "";
+  if (phase === "result" && result) return <ResultView result={result} />;
+  if (!q) return null;
 
   return (
-    <section className="view">
-      <div className="arena-top">
-        <div className="row">
-          <span className="pill num">{g.practice ? "โหมดฝึกทบทวน" : `ห้อง ${g.quiz.pin}`}</span>
-          <span className="pill num">{g.asked.length}/{g.total}</span>
-          <span className="pill">ระดับ{LEVEL[q.level]}</span>
-        </div>
-        <div className="progress" aria-hidden="true"><i style={{ width: `${((g.asked.length - 1) / g.total) * 100}%` }} /></div>
-        <div className="timer" style={{ ["--p" as string]: `${(g.timeLeft / TIME_LIMIT) * 100}%` }} aria-label={`เหลือเวลา ${g.timeLeft} วินาที`}>
-          <span className="num">{g.timeLeft}</span>
-        </div>
-      </div>
-
-      <div className="qcard">
-        <div className="qmeta"><span className="pill">{q.topic}</span><span className="pill num">{g.score.toLocaleString()} คะแนน</span></div>
-        <h2>{q.q}</h2>
-      </div>
-
-      {phase === "question" && (
-        <div className="conf">
-          <span className="muted">ความมั่นใจของคุณ:</span>
-          {(["sure", "mid", "guess"] as const).map((c) => (
-            <button key={c} className={g.conf === c ? "on" : ""} onClick={() => { g.conf = c; force(); }}>{CONF_TXT[c]}</button>
-          ))}
-        </div>
-      )}
-
-      <div className="choices">
-        {q.choices.map((c, i) => {
-          let cls = `choice ch${i}`;
-          if (last) cls += i === q.answer ? " right" : i === last.choice ? " picked-wrong" : " dim";
-          return (
-            <button key={i} className={cls} disabled={!!last} onClick={() => answer(i)}>
-              <span className="key">{KEYS[i]}</span><span>{c}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {last && (
-        <div className={"feedback " + (last.correct ? "good" : "bad")}>
-          <div className="row" style={{ justifyContent: "space-between" }}>
-            <h3 style={{ color: last.correct ? "var(--ok)" : "var(--bad)" }}>
-              {last.correct ? `ถูกต้อง! +${last.points} คะแนน` : last.choice < 0 ? "หมดเวลา" : "ยังไม่ถูก"}
-            </h3>
-            {levelMsg && <span className="adapt" style={{ color: g.level > g.prevLevel ? "var(--ok)" : "var(--warn)" }}>{levelMsg}</span>}
-          </div>
-          <p>{explain}</p>
-          {!last.correct && aiReady && !practiceQ && (
-            <div className="row">
-              <button className="btn btn-soft btn-sm" onClick={askAI} disabled={aiBusy}>{aiBusy ? "AI กำลังคิด…" : "AI อธิบายว่าทำไมผิด + โจทย์ฝึก"}</button>
-            </div>
-          )}
-          {aiText && <div className="ai-box">{aiText}</div>}
-          {practiceQ && (
-            <div className="ai-box" style={{ whiteSpace: "normal", display: "flex", flexDirection: "column", gap: 10 }}>
-              <p><span className="pill">โจทย์ฝึกแก้จุดอ่อน</span> <b>{practiceQ.q}</b></p>
-              <div className="choice-edit">
-                {practiceQ.choices.map((c, i) => {
-                  const done = practicePick !== null;
-                  const style: React.CSSProperties = done && i === practiceQ.answer ? { borderColor: "var(--ok)", background: "var(--ok-bg)" }
-                    : done && i === practicePick ? { borderColor: "var(--bad)", background: "var(--bad-bg)" } : {};
-                  return (
-                    <button key={i} className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", color: "var(--ink)", ...style }}
-                      disabled={done} onClick={() => answerPractice(i)}>{KEYS[i]}. {c}</button>
-                  );
-                })}
-              </div>
-              {practicePick !== null && (
-                <p className="small">
-                  {practicePick === practiceQ.answer ? "ถูกต้อง! เข้าใจแล้ว " : "ยังไม่ถูก ระบบเพิ่มโจทย์นี้เข้าแผนทบทวนแล้ว "}
-                  <span className="muted">{practiceQ.explain}</span>
-                </p>
-              )}
-              <p className="small muted">คำอธิบายและโจทย์นี้สร้างโดย AI โดยอิงจากเฉลยของครู</p>
-            </div>
-          )}
-          <div className="row" style={{ justifyContent: "flex-end" }}>
-            <button ref={nextBtn} className="btn btn-primary" onClick={nextQuestion}>
-              {g.asked.length >= g.total ? "ดูผลการเล่น →" : "ข้อต่อไป →"}
-            </button>
-          </div>
-        </div>
-      )}
-    </section>
+    <ArenaView
+      roomLabel={`ห้อง ${pin}`} index={index} total={total} topic={q.topic} level={q.level} q={q.q} choices={q.choices}
+      score={score} timeLeft={timeLeft} conf={conf} onConf={(c) => { confRef.current = c; setConf(c); }}
+      onAnswer={submit} feedback={fb} onNext={next} busy={busy} nextRef={nextBtn}
+      nextLabel={answered?.done ? "ดูผลการเล่น →" : "ข้อต่อไป →"}
+    >
+      {answered && !answered.correct && <MistakeHelper key={answered.question.id} question={answered.question} choice={answered.choice} />}
+    </ArenaView>
   );
 }

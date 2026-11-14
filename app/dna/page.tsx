@@ -5,18 +5,22 @@ import RadarChart from "@/components/RadarChart";
 import { studyCoach, useAiReady } from "@/lib/ai";
 import { DAY, INTERVALS, SUBJECTS } from "@/lib/constants";
 import { emptyProfile, lvOf, pct, XP_PER_LEVEL } from "@/lib/profile";
-import { loadProfile, saveProfile, toast } from "@/lib/storage";
+import { fetchProfile, storeProfile } from "@/lib/profileStore";
+import { toast } from "@/lib/storage";
 import type { Profile } from "@/lib/types";
 
 export default function DnaPage() {
   const router = useRouter();
   const [p, setP] = useState<Profile | null>(null);
+  const [remote, setRemote] = useState(false);
   const [now, setNow] = useState(0);
   const [coach, setCoach] = useState("");
   const [coachBusy, setCoachBusy] = useState(false);
   const aiReady = useAiReady();
 
-  useEffect(() => { setP(loadProfile()); setNow(Date.now()); }, []);
+  useEffect(() => {
+    fetchProfile().then(({ profile, remote }) => { setP(profile); setRemote(remote); setNow(Date.now()); });
+  }, []);
   if (!p) return <p className="loading">กำลังโหลดโปรไฟล์…</p>;
 
   const vals = SUBJECTS.map((s) => pct(p.stats[s]));
@@ -36,9 +40,9 @@ export default function DnaPage() {
     ["★", "เข้าใจรอบด้าน", "ทุกวิชาได้ 70% ขึ้นไป", SUBJECTS.every((s) => pct(p.stats[s]) >= 70)],
   ];
 
-  function clearExample() {
+  async function clearExample() {
     const fresh = emptyProfile(p!.name);
-    saveProfile(fresh);
+    await storeProfile(fresh, remote);
     setP(fresh);
     toast("ล้างข้อมูลตัวอย่างแล้ว เริ่มเก็บผลจากการเล่นจริง");
   }
@@ -81,7 +85,10 @@ export default function DnaPage() {
         <div className="view" style={{ gap: 18 }}>
           <div>
             <h2 style={{ fontSize: 26 }}>โปรไฟล์การเรียนรู้ของฉัน (Learning DNA)</h2>
-            <p className="muted small">รวมผลจากทุกเกมและการฝึกทบทวน เพื่อบอกว่าเก่งเรื่องไหน และควรฝึกเรื่องใดต่อ</p>
+            <p className="muted small">
+              รวมผลจากทุกเกมและการฝึกทบทวน เพื่อบอกว่าเก่งเรื่องไหน และควรฝึกเรื่องใดต่อ ·{" "}
+              {remote ? "บันทึกในบัญชีของคุณ ใช้ได้ทุกเครื่อง" : "บันทึกในเครื่องนี้เท่านั้น (เข้าสู่ระบบเพื่อเก็บในบัญชี)"}
+            </p>
           </div>
 
           <div className="dna-main">
@@ -134,7 +141,7 @@ export default function DnaPage() {
                 <h3 style={{ fontSize: 16 }}>แผนทบทวนอัตโนมัติ (Smart Revision)</h3>
                 <p className="small muted">ข้อที่เคยตอบผิด หรือตอบถูกแต่เดา จะกลับมาให้ฝึกซ้ำหลัง {INTERVALS.join(", ")} วัน</p>
               </div>
-              <button className="btn btn-primary" disabled={!rev.length} onClick={() => router.push("/play/practice")}>
+              <button className="btn btn-primary" disabled={!rev.length} onClick={() => router.push("/practice")}>
                 {dueN ? `ฝึกทบทวนตอนนี้ (${dueN} ข้อถึงกำหนด)` : rev.length ? "ฝึกล่วงหน้าทั้งหมด" : "ฝึกทบทวนตอนนี้"}
               </button>
             </div>

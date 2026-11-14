@@ -1,8 +1,10 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { loadProfile } from "@/lib/storage";
+import { supabaseBrowser } from "@/lib/supabase/client";
+import { useMe } from "@/lib/useMe";
 
 const LINKS = [
   { href: "/", label: "หน้าแรก" },
@@ -13,17 +15,27 @@ const LINKS = [
 
 export default function Topbar() {
   const path = usePathname();
-  const [name, setName] = useState("");
+  const router = useRouter();
+  const { me, loading } = useMe();
+  const sb = supabaseBrowser();
+  const [guestName, setGuestName] = useState("");
 
   useEffect(() => {
-    const sync = () => setName(loadProfile().name);
+    const sync = () => setGuestName(loadProfile().name);
     sync();
     window.addEventListener("qv-profile", sync);
     return () => window.removeEventListener("qv-profile", sync);
   }, []);
 
   const active = (href: string) =>
-    href === "/" ? path === "/" : path.startsWith(href) || (href === "/join" && path.startsWith("/play"));
+    href === "/" ? path === "/" : path.startsWith(href) || (href === "/join" && path.startsWith("/play")) || (href === "/dna" && path.startsWith("/practice"));
+  const name = me?.name || guestName;
+
+  async function logout() {
+    await sb?.auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <header className="topbar">
@@ -42,7 +54,10 @@ export default function Topbar() {
         </nav>
         <div className="me-chip">
           <div className="avatar">{(name || "S").charAt(0).toUpperCase()}</div>
-          <span>{name}</span>
+          <span>{name}{me && <> · {me.role === "teacher" ? "ครู" : "นักเรียน"}</>}</span>
+          {sb && !loading && (me
+            ? <button className="btn btn-ghost btn-sm" onClick={logout}>ออกจากระบบ</button>
+            : <Link className="btn btn-soft btn-sm" href="/login">เข้าสู่ระบบ</Link>)}
         </div>
       </div>
     </header>

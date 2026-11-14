@@ -12,8 +12,9 @@
 | `/` | หน้าแรก |
 | `/studio` | AI Quiz Studio (สร้างเอง / ให้ AI ร่าง → ครูอนุมัติ → เผยแพร่พร้อม PIN) |
 | `/join` | เข้าร่วมเกมด้วย PIN 6 หลัก (ห้องตัวอย่าง PIN `587421`) |
-| `/play/[pin]` | Quiz Arena (Adaptive + Confidence) และผลการเล่น/อันดับ |
-| `/play/practice` | โหมดฝึกทบทวน (Smart Revision) |
+| `/play/[pin]` | Quiz Arena (Adaptive + Confidence) ตรวจคะแนนโดยเซิร์ฟเวอร์ และผลการเล่น/อันดับ |
+| `/practice` | โหมดฝึกทบทวน (Smart Revision) |
+| `/login` | เข้าสู่ระบบ / สมัครสมาชิก (ครู หรือ นักเรียน) |
 | `/dna` | Learning DNA: จุดแข็ง จุดอ่อน แผนทบทวน รางวัลจากพัฒนาการ |
 
 ## โครงสร้างโค้ด
@@ -40,6 +41,24 @@ npm run dev
 
 แล้วเปิด http://localhost:3000
 
+### เชื่อมฐานข้อมูล (Supabase)
+
+1. สร้างโปรเจกต์ที่ [supabase.com](https://supabase.com) (Region: Southeast Asia (Singapore))
+2. **SQL Editor → New query** วางไฟล์ [`supabase/schema.sql`](supabase/schema.sql) แล้วกด **Run** จากนั้นทำซ้ำกับ [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421)
+3. **Project Settings → API Keys** คัดลอกค่าไปใส่ใน `.env.local` (ดู `.env.example`):
+   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
+4. **Authentication → URL Configuration** ตั้ง Site URL เป็นลิงก์ Vercel และเพิ่ม `http://localhost:3000/**` กับ `https://<ลิงก์ vercel>/**` ใน Redirect URLs
+5. (ทางเลือก สำหรับโครงงาน) **Authentication → Sign In / Providers → Email** ปิด *Confirm email* เพื่อสมัครแล้วใช้ได้ทันที
+
+| ตาราง | เก็บอะไร | ใครเข้าถึงได้ (Row Level Security) |
+|---|---|---|
+| `profiles` | ชื่อ บทบาท ครู/นักเรียน, Learning DNA (`learning` jsonb) | เจ้าของอ่าน/แก้ของตัวเอง เปลี่ยนบทบาทตัวเองไม่ได้ |
+| `quizzes` | ห้องเกม PIN ชื่อชุด เจ้าของ | ทุกคนเห็นห้องตัวอย่าง ครูเห็นและจัดการห้องของตัวเอง |
+| `questions` | คำถาม ตัวเลือก **เฉลย** คำอธิบาย | เฉพาะครูเจ้าของห้อง นักเรียนรับคำถามผ่าน API ที่ซ่อนเฉลย |
+| `game_sessions`, `answers` | ทุกเกมและทุกคำตอบ (ไว้ทำรายงานครูในระยะ 5) | เซิร์ฟเวอร์เท่านั้น |
+
+**การตรวจคะแนนฝั่งเซิร์ฟเวอร์:** `/api/game/start` → `/api/game/answer` → `/api/game/next` เบราว์เซอร์ได้คำถามโดยไม่มีเฉลย เซิร์ฟเวอร์จับเวลาเอง และนับเฉพาะคำตอบแรกของแต่ละข้อ
+
 ### เปิดใช้ AI (Gemini)
 
 1. สร้าง API key ที่ [Google AI Studio](https://aistudio.google.com) → **Get API key**
@@ -65,7 +84,7 @@ AI ทำงานผ่าน API ของเว็บเราเอง (`app
    git push -u origin main
    ```
 2. เข้า [vercel.com](https://vercel.com) → ล็อกอินด้วย GitHub → **Add New → Project** → เลือก `quizverse`
-   → เปิด **Environment Variables** ใส่ `GEMINI_API_KEY` → **Deploy**
+   → เปิด **Environment Variables** ใส่ทุกตัวใน `.env.example` (Gemini + Supabase 3 ตัว) → **Deploy**
    (ถ้า deploy ไปแล้ว: Settings → Environment Variables → เพิ่ม key → Deployments → **Redeploy**)
 3. ทุกครั้งที่ push เข้า `main` เว็บจะอัปเดตเอง ส่วน Pull Request จะได้ลิงก์ Preview แยก
 
@@ -75,6 +94,6 @@ AI ทำงานผ่าน API ของเว็บเราเอง (`app
 
 - [x] **ระยะ 1** Next.js + Vercel (ข้อมูลเก็บในเบราว์เซอร์, เพื่อนร่วมห้องเป็นผู้เล่นจำลอง)
 - [x] **ระยะ 2** AI ผ่าน Gemini API (`GEMINI_API_KEY`), อ่านไฟล์ PDF/DOCX, Mistake Explainer สร้างโจทย์ฝึก
-- [ ] **ระยะ 3** Supabase: ล็อกอินครู/นักเรียน, ฐานข้อมูล, ตรวจคะแนนฝั่งเซิร์ฟเวอร์
+- [x] **ระยะ 3** Supabase: ล็อกอินครู/นักเรียน, ฐานข้อมูล, ตรวจคะแนนฝั่งเซิร์ฟเวอร์
 - [ ] **ระยะ 4** Live Quiz หลายเครื่องพร้อมกัน (Supabase Realtime)
 - [ ] **ระยะ 5** เครื่องมือครู: คลังข้อสอบ, รายงานผล, Teacher Early Alert, รูปประกอบคำถาม

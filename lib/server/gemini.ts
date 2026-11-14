@@ -1,4 +1,5 @@
 import "server-only";
+import { HttpError } from "./http";
 
 /**
  * Thin wrapper around the Gemini REST API (generateContent).
@@ -12,9 +13,7 @@ export const MODEL_FAST = process.env.GEMINI_MODEL_FAST || "gemini-3.5-flash-lit
 
 export const aiConfigured = () => !!process.env.GEMINI_API_KEY;
 
-export class AiError extends Error {
-  constructor(public status: number, message: string) { super(message); }
-}
+export class AiError extends HttpError {}
 
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
 

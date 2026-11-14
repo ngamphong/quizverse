@@ -29,10 +29,10 @@ export default function TeacherNav({ active }: { active: Key }) {
     e.preventDefault();
     if (path === page) {
       history.replaceState(null, "", `#${hash}`);
+      window.dispatchEvent(new HashChangeEvent("hashchange")); // replaceState does not fire it; the page uses it to highlight the menu
       scrollToSection(hash);
     } else {
-      router.push(href);
-      scrollToSection(hash);
+      router.push(href, { scroll: false }); // the dashboard scrolls to the section itself once its data has loaded
     }
   }
 

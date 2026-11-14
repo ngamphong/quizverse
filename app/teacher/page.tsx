@@ -39,7 +39,8 @@ export default function TeacherPage() {
     const sync = () => {
       const h = location.hash.slice(1);
       setSection(h === "bank" ? "bank" : h === "reports" ? "report" : "dashboard");
-      if (data && (h === "bank" || h === "reports")) scrollToSection(h);
+      // wait a frame after the data renders, so nothing resets the scroll afterwards
+      if (data && (h === "bank" || h === "reports")) setTimeout(() => scrollToSection(h), 120);
     };
     sync();
     window.addEventListener("hashchange", sync);

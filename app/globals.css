@@ -73,9 +73,10 @@ button, input, select, textarea { font: inherit; color: inherit }
 .drawer-user .menu-theme button.on { background: var(--surface-2) }
 .hdr-nav a { padding: 7px 11px }
 @media (max-width: 1239px) {
-  .hdr-nav { display: none }
-  .burger { display: grid }
-  .user-menu { display: none }
+  /* .topbar prefix: must beat the generic .nav rule that comes later in this file */
+  .topbar .hdr-nav { display: none }
+  .topbar .burger { display: grid }
+  .topbar .user-menu { display: none }
 }
 @media (max-width: 420px) { .brand-tag { display: none } }
 .brand-mark { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, var(--violet), var(--indigo)); display: grid; place-items: center; color: var(--on-accent); font: italic 800 22px var(--f-display) }

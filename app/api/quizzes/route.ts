@@ -58,7 +58,9 @@ export async function POST(req: Request) {
     let quiz: { id: string; pin: string } | null = null;
     for (let i = 0; i < 6 && !quiz; i++) {
       const pin = String(randomInt(100000, 1000000));
-      const { data, error } = await sb.from("quizzes").insert({ pin, title, owner_id: uid }).select("id, pin").single();
+      // sharing columns are sent only when the teacher opted in, so publishing works before share.sql
+      const share = body.isPublic === true ? { is_public: true, show_author: body.showAuthor !== false, shared_at: new Date().toISOString() } : {};
+      const { data, error } = await sb.from("quizzes").insert({ pin, title, owner_id: uid, ...share }).select("id, pin").single();
       if (data) quiz = data;
       else if (error && error.code !== "23505") throw new HttpError(500, "สร้างห้องไม่สำเร็จ"); // 23505 = PIN taken, retry
     }

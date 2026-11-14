@@ -8,7 +8,7 @@ import { toast } from "@/lib/storage";
 import { useMe } from "@/lib/useMe";
 
 interface Overview {
-  quizzes: { id: string; pin: string; title: string; createdAt: string; count: number; topics: string[]; soloPlays: number; liveRooms: number }[];
+  quizzes: { id: string; pin: string; title: string; createdAt: string; count: number; topics: string[]; soloPlays: number; liveRooms: number; isPublic: boolean; showAuthor: boolean; sharingReady: boolean }[];
   summary: { attempts: number; students: number; answers: number; accuracy: number };
   topics: { topic: string; total: number; pct: number }[];
   alerts: { kind: "question" | "topic" | "student" | "info"; text: string }[];
@@ -54,6 +54,15 @@ export default function TeacherPage() {
     setBusy(null);
     if (!r.ok) return toast(d.error || "เปิดห้องสดไม่สำเร็จ");
     router.push(`/live/host/${d.id}`);
+  }
+
+  async function share(id: string, patch: { isPublic?: boolean; showAuthor?: boolean }) {
+    setBusy(id);
+    const r = await fetch(`/api/teacher/quizzes/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(patch) });
+    setBusy(null);
+    if (!r.ok) return toast((await r.json().catch(() => ({}))).error || "บันทึกไม่สำเร็จ");
+    toast(patch.isPublic === true ? "แบ่งปันในหน้าแรกแล้ว" : patch.isPublic === false ? "เลิกแบ่งปันแล้ว" : "บันทึกแล้ว");
+    load();
   }
 
   async function remove(id: string) {
@@ -112,6 +121,20 @@ export default function TeacherPage() {
                     <div style={{ minWidth: 0 }}>
                       <b>{z.title}</b>
                       <p className="small muted">PIN {z.pin} · {z.count} ข้อ · {z.topics.join(", ")} · เล่นเดี่ยว {z.soloPlays} ครั้ง · ห้องสด {z.liveRooms} ห้อง · สร้าง {fmtDate(z.createdAt)}</p>
+                      <div className="row" style={{ gap: 8, marginTop: 6 }}>
+                        <label className="approve" style={{ fontWeight: 500, fontSize: 13 }}>
+                          <input type="checkbox" checked={z.isPublic} disabled={busy === z.id || !z.sharingReady} onChange={(e) => share(z.id, { isPublic: e.target.checked })} />
+                          แบ่งปันในหน้าแรก
+                        </label>
+                        {z.isPublic && (
+                          <label className="approve" style={{ fontWeight: 500, fontSize: 13 }}>
+                            <input type="checkbox" checked={z.showAuthor} disabled={busy === z.id} onChange={(e) => share(z.id, { showAuthor: e.target.checked })} />
+                            แสดงชื่อผู้สร้าง
+                          </label>
+                        )}
+                        {!z.sharingReady && <span className="small muted">(รัน supabase/share.sql ก่อน)</span>}
+                        {z.isPublic && <span className="pill ok">แสดงในหน้าแรก</span>}
+                      </div>
                     </div>
                     <div className="row" style={{ gap: 8 }}>
                       <Link className="btn btn-soft btn-sm" href={`/teacher/quiz/${z.id}`}>รายงาน / แก้ไข</Link>

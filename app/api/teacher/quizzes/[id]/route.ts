@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { fail } from "@/lib/server/http";
-import { deleteQuiz, getQuizForEdit, requireTeacher, saveQuiz } from "@/lib/server/teacher";
+import { deleteQuiz, getQuizForEdit, requireTeacher, saveQuiz, setSharing } from "@/lib/server/teacher";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +21,16 @@ export async function PUT(req: Request, { params }: Ctx) {
   try {
     const uid = await requireTeacher();
     return NextResponse.json(await saveQuiz((await params).id, uid, await req.json().catch(() => ({}))));
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Sharing consent: { isPublic?: boolean, showAuthor?: boolean } */
+export async function PATCH(req: Request, { params }: Ctx) {
+  try {
+    const uid = await requireTeacher();
+    return NextResponse.json(await setSharing((await params).id, uid, await req.json().catch(() => ({}))));
   } catch (e) {
     return fail(e);
   }

@@ -31,6 +31,8 @@ export default function StudioPage() {
   const aiReady = useAiReady();
   const { me } = useMe();
   const [publishing, setPublishing] = useState(false);
+  const [sharePublic, setSharePublic] = useState(false); // opt-in only: never shared without the teacher's consent
+  const [shareAuthor, setShareAuthor] = useState(true);
   const [title, setTitle] = useState("ทบทวนบทเรียน");
   const [publishErr, setPublishErr] = useState("");
   const [publishedPin, setPublishedPin] = useState("");
@@ -89,7 +91,10 @@ export default function StudioPage() {
     try {
       const r = await fetch("/api/quizzes", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, questions: ok.map(({ topic, level, q, choices, answer, explain, image }) => ({ topic, level, q, choices, answer, explain, image })) }),
+        body: JSON.stringify({
+          title, isPublic: sharePublic, showAuthor: shareAuthor,
+          questions: ok.map(({ topic, level, q, choices, answer, explain, image }) => ({ topic, level, q, choices, answer, explain, image })),
+        }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { setPublishErr(d.error || "เผยแพร่ไม่สำเร็จ"); return; }
@@ -204,6 +209,20 @@ export default function StudioPage() {
           <div className="card publish-bar">
             <label className="fld" style={{ flex: "1 1 260px" }}>ชื่อชุดข้อสอบ<input type="text" id="quizTitle" value={title} onChange={(e) => setTitle(e.target.value)} /></label>
             <button className="btn btn-primary" onClick={publish} disabled={publishing || me?.role !== "teacher"}>{publishing ? "กำลังเผยแพร่…" : "เผยแพร่และสร้าง PIN"}</button>
+            {me?.role === "teacher" && (
+              <div style={{ flexBasis: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
+                <label className="approve" style={{ fontWeight: 500 }}>
+                  <input type="checkbox" checked={sharePublic} onChange={(e) => setSharePublic(e.target.checked)} />
+                  ยินยอมให้แสดงชุดนี้ในหน้าแรก ให้ทุกคนเล่นได้ (แสดงเฉพาะชื่อชุดและจำนวนข้อ ไม่แสดงเฉลย)
+                </label>
+                {sharePublic && (
+                  <label className="approve" style={{ fontWeight: 500, marginLeft: 26 }}>
+                    <input type="checkbox" checked={shareAuthor} onChange={(e) => setShareAuthor(e.target.checked)} /> แสดงชื่อของฉันเป็นผู้สร้าง
+                  </label>
+                )}
+                <span className="small muted">เปลี่ยนใจภายหลังได้ที่แดชบอร์ดครู → คลังข้อสอบ</span>
+              </div>
+            )}
             {me?.role !== "teacher" && (
               <p className="small muted" style={{ flexBasis: "100%" }}>
                 ร่างคำถามได้ทุกคน แต่การเผยแพร่เป็นห้องเกมต้อง <Link href="/login">เข้าสู่ระบบด้วยบัญชีครู</Link>

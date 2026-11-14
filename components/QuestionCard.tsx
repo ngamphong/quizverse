@@ -24,10 +24,29 @@ export default function QuestionCard({ index, value: d, onChange, onRemove, badg
   const [uploading, setUploading] = useState(false);
   const [imgErr, setImgErr] = useState("");
 
+  const [over, setOver] = useState(false);
+
   async function upload(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     e.target.value = "";
-    if (!f) return;
+    if (f) uploadFile(f);
+  }
+
+  /** Drag a picture onto the card, or paste a screenshot into the question box. */
+  function onDrop(e: React.DragEvent) {
+    if (!canUpload) return;
+    e.preventDefault(); setOver(false);
+    const f = [...e.dataTransfer.files].find((x) => x.type.startsWith("image/"));
+    if (f) uploadFile(f);
+  }
+  function onPaste(e: React.ClipboardEvent) {
+    if (!canUpload) return;
+    const f = [...e.clipboardData.files].find((x) => x.type.startsWith("image/"));
+    if (f) { e.preventDefault(); uploadFile(f); }
+  }
+
+  async function uploadFile(f: File) {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(f.type)) return setImgErr("รองรับรูป PNG, JPG, WEBP และ GIF");
     if (f.size > 2 * 1024 * 1024) return setImgErr("รูปใหญ่เกิน 2 MB ลองย่อรูปก่อน");
     setUploading(true); setImgErr("");
     try {
@@ -45,7 +64,9 @@ export default function QuestionCard({ index, value: d, onChange, onRemove, badg
   }
 
   return (
-    <div className={"draft" + (approved ? " approved" : "")}>
+    <div className={"draft" + (approved ? " approved" : "")} onDrop={onDrop}
+      onDragOver={(e) => { if (canUpload) { e.preventDefault(); setOver(true); } }} onDragLeave={() => setOver(false)}
+      style={over ? { borderColor: "var(--violet)", borderStyle: "dashed", background: "var(--surface-2)" } : undefined}>
       <div className="draft-head">
         <div className="row" style={{ gap: 8 }}>
           <b style={{ fontFamily: "var(--f-display)" }}>ข้อ {index + 1}</b>
@@ -59,22 +80,27 @@ export default function QuestionCard({ index, value: d, onChange, onRemove, badg
           <button type="button" className="btn btn-ghost btn-sm" onClick={onRemove}>ลบ</button>
         </div>
       </div>
-      <textarea data-q rows={2} placeholder="พิมพ์คำถาม" style={{ minHeight: 56 }} aria-label="คำถาม" value={d.q} onChange={(e) => onChange({ q: e.target.value })} />
-      {(d.image || canUpload) && (
-        <div className="row" style={{ gap: 10, alignItems: "flex-start" }}>
+      <textarea data-q rows={2} placeholder={canUpload ? "พิมพ์คำถาม (วางรูปด้วย Ctrl+V ได้)" : "พิมพ์คำถาม"} style={{ minHeight: 56 }} aria-label="คำถาม"
+        value={d.q} onChange={(e) => onChange({ q: e.target.value })} onPaste={onPaste} />
+      {canUpload ? (
+        <div className="img-zone">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {d.image && <img src={d.image} alt="รูปประกอบคำถาม" style={{ maxHeight: 120, maxWidth: "100%", borderRadius: 10, border: "1px solid var(--line)" }} />}
-          {canUpload && (
-            <div className="row" style={{ gap: 8 }}>
-              <label className="btn btn-soft btn-sm" style={{ cursor: uploading ? "wait" : "pointer" }}>
-                {uploading ? "กำลังอัปโหลด…" : d.image ? "เปลี่ยนรูป" : "+ เพิ่มรูปประกอบ"}
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden disabled={uploading} onChange={upload} />
-              </label>
-              {d.image && <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange({ image: null })}>เอารูปออก</button>}
-            </div>
-          )}
+          {d.image && <img src={d.image} alt="รูปประกอบคำถาม" />}
+          <div className="row" style={{ gap: 8 }}>
+            <label className="btn btn-soft btn-sm" style={{ cursor: uploading ? "wait" : "pointer" }}>
+              {uploading ? "กำลังอัปโหลด…" : d.image ? "เปลี่ยนรูป" : "+ เพิ่มรูปประกอบ"}
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden disabled={uploading} onChange={upload} />
+            </label>
+            {d.image && <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange({ image: null })}>เอารูปออก</button>}
+            {!d.image && !uploading && <span className="small muted">หรือลากรูปมาวางที่การ์ดนี้ · PNG/JPG/WEBP/GIF ไม่เกิน 2 MB</span>}
+          </div>
           {imgErr && <span className="err">{imgErr}</span>}
         </div>
+      ) : d.image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={d.image} alt="รูปประกอบคำถาม" style={{ maxHeight: 120, maxWidth: "100%", borderRadius: 10, border: "1px solid var(--line)" }} />
+      ) : (
+        <span className="small muted">ต้องการใส่รูปประกอบ? <a href="/login">เข้าสู่ระบบด้วยบัญชีครู</a></span>
       )}
       <div className="choice-edit">
         {d.choices.map((c, j) => (

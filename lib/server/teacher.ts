@@ -28,7 +28,8 @@ async function ownQuiz(quizId: string, uid: string) {
 // ───────────── question bank ─────────────
 
 export async function listMyQuizzes(uid: string) {
-  const { data } = await db().from("quizzes").select("id, pin, title, created_at, questions(topic)").eq("owner_id", uid).order("created_at", { ascending: false });
+  // "*" so the bank still loads before supabase/share.sql adds the sharing columns
+  const { data } = await db().from("quizzes").select("*, questions(topic)").eq("owner_id", uid).order("created_at", { ascending: false });
   const quizzes = data ?? [];
   const ids = quizzes.map((q) => q.id);
   const [{ data: solo }, { data: rooms }] = await Promise.all([
@@ -38,7 +39,11 @@ export async function listMyQuizzes(uid: string) {
   const count = (rows: { quiz_id: string }[] | null, id: string) => (rows ?? []).filter((r) => r.quiz_id === id).length;
   return quizzes.map((z) => {
     const topics = (z.questions as { topic: string }[]).map((x) => x.topic);
-    return { id: z.id, pin: z.pin, title: z.title, createdAt: z.created_at, count: topics.length, topics: [...new Set(topics)], soloPlays: count(solo, z.id), liveRooms: count(rooms, z.id) };
+    return {
+      id: z.id, pin: z.pin, title: z.title, createdAt: z.created_at, count: topics.length, topics: [...new Set(topics)],
+      soloPlays: count(solo, z.id), liveRooms: count(rooms, z.id),
+      isPublic: z.is_public === true, showAuthor: z.show_author !== false, sharingReady: "is_public" in z,
+    };
   });
 }
 
@@ -76,6 +81,19 @@ export async function saveQuiz(quizId: string, uid: string, body: { title?: unkn
     if (error) throw new HttpError(500, error.code === "42703" ? "ต้องรัน supabase/teacher.sql ก่อนใช้รูปประกอบ" : "บันทึกคำถามไม่สำเร็จ");
   }
   return { ok: true, count: qs.length, removed: removed.length };
+}
+
+/** The teacher's consent to list a quiz on the home page (and whether to show their name). */
+export async function setSharing(quizId: string, uid: string, body: { isPublic?: unknown; showAuthor?: unknown }) {
+  const quiz = await ownQuiz(quizId, uid);
+  const patch: Record<string, unknown> = {};
+  if (typeof body.isPublic === "boolean") { patch.is_public = body.isPublic; patch.shared_at = body.isPublic ? new Date().toISOString() : null; }
+  if (typeof body.showAuthor === "boolean") patch.show_author = body.showAuthor;
+  if (!Object.keys(patch).length) throw new HttpError(400, "ไม่มีการเปลี่ยนแปลง");
+  const { error } = await db().from("quizzes").update(patch).eq("id", quiz.id);
+  if (error) throw new HttpError(error.code === "PGRST204" || error.code === "42703" ? 503 : 500,
+    error.code === "PGRST204" || error.code === "42703" ? "ต้องรัน supabase/share.sql ใน Supabase ก่อนใช้การแบ่งปัน" : "บันทึกการแบ่งปันไม่สำเร็จ");
+  return { ok: true };
 }
 
 export async function deleteQuiz(quizId: string, uid: string) {

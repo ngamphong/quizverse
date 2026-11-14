@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { AI_OFF_NOTE, AI_READY, generateQuestions } from "@/lib/ai";
+import { AI_OFF_NOTE, generateQuestions, useAiReady } from "@/lib/ai";
 import { KEYS, LEVEL, SUBJECTS } from "@/lib/constants";
 import { loadDrafts, loadQuizzes, saveDrafts, saveQuizzes, toast } from "@/lib/storage";
 import type { Draft } from "@/lib/types";
@@ -20,9 +20,10 @@ export default function StudioPage() {
   const [level, setLevel] = useState<"mix" | "1" | "2" | "3">("mix");
   const [topic, setTopic] = useState("ระบบสุริยะและการเคลื่อนที่ของโลก");
   const [text, setText] = useState("");
-  const [fileText, setFileText] = useState("");
-  const [fileInfo, setFileInfo] = useState("ไฟล์ PDF, DOCX และ PPT จะรองรับในระยะที่ 2 ตอนนี้ให้คัดลอกข้อความมาวางแทน");
+  const [file, setFile] = useState<File | null>(null);
+  const [fileInfo, setFileInfo] = useState("รองรับ .pdf .docx .txt .md ขนาดไม่เกิน 4 MB");
   const [busy, setBusy] = useState(false);
+  const aiReady = useAiReady();
   const [title, setTitle] = useState("ทบทวนบทเรียน");
   const [publishErr, setPublishErr] = useState("");
   const [publishedPin, setPublishedPin] = useState("");
@@ -48,23 +49,24 @@ export default function StudioPage() {
   }
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    setFileText("");
+    const f = e.target.files?.[0] ?? null;
+    setFile(null);
     if (!f) return;
-    if (!/\.(txt|md)$/i.test(f.name)) { setFileInfo("ตอนนี้รองรับเฉพาะ .txt และ .md ไฟล์ PDF/DOCX ให้คัดลอกข้อความมาวางแทน"); return; }
-    const r = new FileReader();
-    r.onload = () => { const t = String(r.result).slice(0, 8000); setFileText(t); setFileInfo(`อ่านไฟล์ ${f.name} แล้ว (${t.length.toLocaleString()} ตัวอักษร)`); };
-    r.readAsText(f);
+    if (!/\.(pdf|docx|txt|md)$/i.test(f.name)) { setFileInfo("รองรับ .pdf .docx .txt .md เท่านั้น (ไฟล์ .doc/.ppt แบบเก่าให้บันทึกเป็น PDF ก่อน)"); return; }
+    if (f.size > 4 * 1024 * 1024) { setFileInfo("ไฟล์ใหญ่เกิน 4 MB ลองแยกเป็นไฟล์ย่อย หรือคัดลอกเฉพาะเนื้อหาที่ต้องการมาวาง"); return; }
+    setFile(f);
+    setFileInfo(`เลือกไฟล์ ${f.name} (${(f.size / 1024).toFixed(0)} KB) แล้ว`);
   }
 
   async function runAI() {
-    const content = src === "topic" ? topic.trim() : src === "text" ? text.trim().slice(0, 6000) : fileText;
-    if (content.length < 3) { toast("กรุณาใส่หัวข้อหรือเนื้อหาก่อน"); return; }
+    const content = src === "topic" ? topic.trim() : src === "text" ? text.trim().slice(0, 12000) : "";
+    if (src === "file" ? !file : content.length < 3) { toast(src === "file" ? "กรุณาเลือกไฟล์ก่อน" : "กรุณาใส่หัวข้อหรือเนื้อหาก่อน"); return; }
     setBusy(true);
     try {
-      const qs = await generateQuestions({ subject, count, level, content });
+      const qs = await generateQuestions({ subject, count, level, mode: src, content, file });
       setDrafts((ds) => [...ds, ...qs.map((q) => ({ ...q, topic: subject, approved: false, src: "ai" as const }))]);
       toast(`AI ร่างข้อสอบ ${qs.length} ข้อแล้ว กรุณาตรวจและอนุมัติทีละข้อ`);
+      setTimeout(() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     } catch (e) {
       toast(e instanceof Error ? e.message : "สร้างข้อสอบไม่สำเร็จ");
     } finally {
@@ -117,7 +119,7 @@ export default function StudioPage() {
                 <p className="muted small">เลือกแหล่งเนื้อหา AI จะร่างคำถาม ตัวเลือก เฉลย และคำอธิบาย คุณต้องตรวจและกดอนุมัติทุกข้อก่อนเผยแพร่</p>
               </div>
               <div className="grid src3">
-                {([["file", "อัปโหลดไฟล์", ".txt หรือ .md"], ["topic", "ใส่หัวข้อ", "เช่น ระบบสุริยะ"], ["text", "วางข้อความ", "จากบทเรียนหรือชีต"]] as const).map(([k, t, d]) => (
+                {([["file", "อัปโหลดไฟล์", "PDF / DOCX / TXT"], ["topic", "ใส่หัวข้อ", "เช่น ระบบสุริยะ"], ["text", "วางข้อความ", "จากบทเรียนหรือชีต"]] as const).map(([k, t, d]) => (
                   <button type="button" key={k} className={"src" + (src === k ? " on" : "")} onClick={() => setSrc(k)}>
                     <b>{t}</b><span className="small muted">{d}</span>
                   </button>
@@ -137,16 +139,18 @@ export default function StudioPage() {
                 </label>
               </div>
               {src === "topic" && <label className="fld">หัวข้อ<input type="text" id="aiTopic" value={topic} onChange={(e) => setTopic(e.target.value)} /></label>}
-              {src === "text" && <label className="fld">เนื้อหาบทเรียน<textarea id="aiText" value={text} onChange={(e) => setText(e.target.value)} placeholder="วางเนื้อหาบทเรียนที่นี่ (สูงสุดประมาณ 6,000 ตัวอักษร)" /></label>}
+              {src === "text" && <label className="fld">เนื้อหาบทเรียน<textarea id="aiText" value={text} onChange={(e) => setText(e.target.value)} placeholder="วางเนื้อหาบทเรียนที่นี่ (สูงสุดประมาณ 12,000 ตัวอักษร)" /></label>}
               {src === "file" && (
                 <div>
-                  <label className="fld">ไฟล์เนื้อหา (.txt, .md)<input type="file" id="aiFile" accept=".txt,.md,text/plain,text/markdown" onChange={onFile} /></label>
+                  <label className="fld">ไฟล์เนื้อหา<input type="file" id="aiFile" accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown" onChange={onFile} /></label>
                   <p className="small muted" style={{ marginTop: 6 }}>{fileInfo}</p>
                 </div>
               )}
               <div className="row">
-                <button className="btn btn-primary" onClick={runAI} disabled={!AI_READY || busy}>{busy ? "AI กำลังร่างข้อสอบ…" : "สร้างด้วย AI"}</button>
-                <span className={"ai-status" + (AI_READY ? " ok" : "")}>{AI_READY ? "AI พร้อมใช้งาน" : AI_OFF_NOTE}</span>
+                <button className="btn btn-primary" onClick={runAI} disabled={!aiReady || busy}>{busy ? "AI กำลังร่างข้อสอบ… (10-60 วินาที)" : "สร้างด้วย AI"}</button>
+                <span className={"ai-status" + (aiReady ? " ok" : "")}>
+                  {aiReady === null ? "กำลังตรวจสถานะ AI…" : aiReady ? "AI (Gemini) พร้อมใช้งาน" : AI_OFF_NOTE}
+                </span>
               </div>
             </div>
           ) : (
@@ -170,7 +174,7 @@ export default function StudioPage() {
           <div className="grid" style={{ gap: 12 }} ref={listRef}>
             {drafts.length === 0 && (
               <div className="card" style={{ boxShadow: "none" }}>
-                <p className="muted">ยังไม่มีร่างคำถาม เปิดแท็บ &quot;สร้างเอง&quot; เพื่อเพิ่มทีละข้อ หรือให้ AI สร้างจากหัวข้อ (ระยะที่ 2)</p>
+                <p className="muted">ยังไม่มีร่างคำถาม ให้ AI สร้างจากหัวข้อด้านบน หรือเปิดแท็บ &quot;สร้างเอง&quot; เพื่อเพิ่มทีละข้อ</p>
               </div>
             )}
             {drafts.map((d, i) => (

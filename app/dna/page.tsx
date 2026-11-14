@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import RadarChart from "@/components/RadarChart";
-import { AI_READY, studyCoach } from "@/lib/ai";
+import { studyCoach, useAiReady } from "@/lib/ai";
 import { DAY, INTERVALS, SUBJECTS } from "@/lib/constants";
 import { emptyProfile, lvOf, pct, XP_PER_LEVEL } from "@/lib/profile";
 import { loadProfile, saveProfile, toast } from "@/lib/storage";
@@ -14,6 +14,7 @@ export default function DnaPage() {
   const [now, setNow] = useState(0);
   const [coach, setCoach] = useState("");
   const [coachBusy, setCoachBusy] = useState(false);
+  const aiReady = useAiReady();
 
   useEffect(() => { setP(loadProfile()); setNow(Date.now()); }, []);
   if (!p) return <p className="loading">กำลังโหลดโปรไฟล์…</p>;
@@ -43,7 +44,13 @@ export default function DnaPage() {
   }
 
   async function askCoach() {
-    const summary = SUBJECTS.map((s) => `${s}: ${pct(p!.stats[s])}% (${p!.stats[s]?.total || 0} ข้อ)`).join("\n");
+    // scores only — the student's name is never sent to the AI
+    const subjects = SUBJECTS.map((s) => {
+      const st = p!.stats[s];
+      return `${s}: ${pct(st)}% (${st?.total || 0} ข้อ, ผลรายเกม ${(st?.hist || []).join(", ") || "-"})`;
+    }).join("\n");
+    const revs = p!.revision.slice(0, 6).map((r) => `- [${r.topic}] ${r.q} (${r.reason})`).join("\n") || "-";
+    const summary = `${subjects}\nมั่นใจแต่ตอบผิด ${p!.conf.sureWrong} ครั้ง, ตอบถูกแต่เดา ${p!.conf.guessRight} ครั้ง\nข้อที่รอทบทวน:\n${revs}`;
     setCoachBusy(true);
     setCoach("AI กำลังวิเคราะห์ผลของคุณ…");
     try { setCoach(await studyCoach(summary)); }
@@ -150,9 +157,9 @@ export default function DnaPage() {
             <div className="row" style={{ justifyContent: "space-between" }}>
               <div>
                 <h3 style={{ fontSize: 16 }}>AI Study Coach</h3>
-                <p className="small muted">{AI_READY ? "ให้ AI อ่านผลของคุณแล้วเขียนแผนเรียนสั้นๆ สำหรับสัปดาห์นี้" : "ให้ AI เขียนแผนเรียนจากผลของคุณ (เปิดใช้ในระยะที่ 2)"}</p>
+                <p className="small muted">{aiReady === false ? "ยังไม่พร้อม: ผู้ดูแลต้องตั้งค่า GEMINI_API_KEY ก่อน" : "ให้ AI อ่านผลของคุณแล้วเขียนแผนเรียนสั้นๆ สำหรับสัปดาห์นี้ (ส่งเฉพาะคะแนน ไม่ส่งชื่อ)"}</p>
               </div>
-              <button className="btn btn-soft" onClick={askCoach} disabled={!AI_READY || coachBusy}>ขอแผนการเรียนจาก AI</button>
+              <button className="btn btn-soft" onClick={askCoach} disabled={!aiReady || coachBusy}>{coachBusy ? "AI กำลังเขียนแผน…" : "ขอแผนการเรียนจาก AI"}</button>
             </div>
             {coach && <div className="ai-box">{coach}</div>}
           </div>

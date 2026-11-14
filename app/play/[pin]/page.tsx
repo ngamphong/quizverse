@@ -3,8 +3,8 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { adjustLevel, pickQuestion } from "@/lib/adaptive";
-import { AI_READY, explainMistake } from "@/lib/ai";
-import { CONF_TXT, KEYS, LEVEL, ROUNDS, TIME_LIMIT } from "@/lib/constants";
+import { explainMistake, useAiReady } from "@/lib/ai";
+import { CONF_TXT, DAY, KEYS, LEVEL, ROUNDS, TIME_LIMIT } from "@/lib/constants";
 import { gradeAnswer } from "@/lib/grading";
 import { applyToProfile } from "@/lib/profile";
 import { loadProfile, loadQuizzes, saveProfile, toast } from "@/lib/storage";
@@ -51,6 +51,9 @@ export default function PlayPage() {
   const [showReview, setShowReview] = useState(false);
   const [aiText, setAiText] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
+  const [practiceQ, setPracticeQ] = useState<Question | null>(null);
+  const [practicePick, setPracticePick] = useState<number | null>(null);
+  const aiReady = useAiReady();
   const nextBtn = useRef<HTMLButtonElement>(null);
 
   const setPhase = (p: Phase) => { phaseRef.current = p; setPhaseState(p); };
@@ -66,6 +69,8 @@ export default function PlayPage() {
     g.conf = "sure";
     g.timeLeft = TIME_LIMIT;
     setAiText("");
+    setPracticeQ(null);
+    setPracticePick(null);
     setPhase("question");
     force();
     stopTimer();
@@ -155,9 +160,31 @@ export default function PlayPage() {
     if (!last) return;
     setAiBusy(true);
     setAiText("AI กำลังคิด…");
-    try { setAiText(await explainMistake(last.q, last.choice)); }
-    catch (e) { setAiText(e instanceof Error ? e.message : "เชื่อมต่อ AI ไม่สำเร็จ"); }
-    finally { setAiBusy(false); }
+    try {
+      const r = await explainMistake(last.q, last.choice);
+      if (gRef.current?.answers[gRef.current.answers.length - 1] !== last) return; // moved on meanwhile
+      setAiText(r.explanation);
+      setPracticeQ(r.practice);
+      setPracticePick(null);
+    } catch (e) {
+      setAiText(e instanceof Error ? e.message : "เชื่อมต่อ AI ไม่สำเร็จ");
+    } finally {
+      setAiBusy(false);
+    }
+  }
+
+  /** Practice question from the Mistake Explainer: a wrong answer goes into Smart Revision. */
+  function answerPractice(i: number) {
+    if (!practiceQ || practicePick !== null) return;
+    setPracticePick(i);
+    if (i !== practiceQ.answer) {
+      const p = loadProfile();
+      const qid = "ai:" + practiceQ.q;
+      if (!p.revision.some((r) => r.qid === qid)) {
+        p.revision.push({ ...practiceQ, qid, step: 0, due: Date.now() + DAY, reason: "โจทย์ฝึกจาก AI" });
+        saveProfile(p);
+      }
+    }
   }
 
   if (phase === "loading") return <p className="loading">กำลังเตรียมห้องเกม…</p>;
@@ -304,12 +331,35 @@ export default function PlayPage() {
             {levelMsg && <span className="adapt" style={{ color: g.level > g.prevLevel ? "var(--ok)" : "var(--warn)" }}>{levelMsg}</span>}
           </div>
           <p>{explain}</p>
-          {!last.correct && AI_READY && (
+          {!last.correct && aiReady && !practiceQ && (
             <div className="row">
-              <button className="btn btn-soft btn-sm" onClick={askAI} disabled={aiBusy}>AI อธิบายว่าทำไมผิด</button>
+              <button className="btn btn-soft btn-sm" onClick={askAI} disabled={aiBusy}>{aiBusy ? "AI กำลังคิด…" : "AI อธิบายว่าทำไมผิด + โจทย์ฝึก"}</button>
             </div>
           )}
           {aiText && <div className="ai-box">{aiText}</div>}
+          {practiceQ && (
+            <div className="ai-box" style={{ whiteSpace: "normal", display: "flex", flexDirection: "column", gap: 10 }}>
+              <p><span className="pill">โจทย์ฝึกแก้จุดอ่อน</span> <b>{practiceQ.q}</b></p>
+              <div className="choice-edit">
+                {practiceQ.choices.map((c, i) => {
+                  const done = practicePick !== null;
+                  const style: React.CSSProperties = done && i === practiceQ.answer ? { borderColor: "var(--ok)", background: "var(--ok-bg)" }
+                    : done && i === practicePick ? { borderColor: "var(--bad)", background: "var(--bad-bg)" } : {};
+                  return (
+                    <button key={i} className="btn btn-ghost btn-sm" style={{ justifyContent: "flex-start", color: "var(--ink)", ...style }}
+                      disabled={done} onClick={() => answerPractice(i)}>{KEYS[i]}. {c}</button>
+                  );
+                })}
+              </div>
+              {practicePick !== null && (
+                <p className="small">
+                  {practicePick === practiceQ.answer ? "ถูกต้อง! เข้าใจแล้ว " : "ยังไม่ถูก ระบบเพิ่มโจทย์นี้เข้าแผนทบทวนแล้ว "}
+                  <span className="muted">{practiceQ.explain}</span>
+                </p>
+              )}
+              <p className="small muted">คำอธิบายและโจทย์นี้สร้างโดย AI โดยอิงจากเฉลยของครู</p>
+            </div>
+          )}
           <div className="row" style={{ justifyContent: "flex-end" }}>
             <button ref={nextBtn} className="btn btn-primary" onClick={nextQuestion}>
               {g.asked.length >= g.total ? "ดูผลการเล่น →" : "ข้อต่อไป →"}

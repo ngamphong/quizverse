@@ -22,7 +22,8 @@ const LEVEL_TEXT: Record<number, string> = {
 
 async function fromBank(subject: string, stage: number) {
   const { data, error } = await supabaseAdmin().from("quest_questions").select("id, q, choices, answer, explain").eq("subject", subject).eq("stage", stage).limit(60);
-  if (error) throw new HttpError(503, error.code === "42P01" ? "ยังไม่ได้รัน supabase/quest-team.sql" : "โหลดคลังภารกิจไม่สำเร็จ");
+  // 42P01 (Postgres) / PGRST205 (PostgREST) = table does not exist yet
+  if (error) throw new HttpError(503, ["42P01", "PGRST205"].includes(error.code ?? "") ? "ยังไม่ได้รัน supabase/quest-team.sql ใน Supabase" : "โหลดคลังภารกิจไม่สำเร็จ");
   return data ?? [];
 }
 

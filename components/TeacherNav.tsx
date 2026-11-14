@@ -14,7 +14,16 @@ const ITEMS: { key: Key; href: string; label: string }[] = [
 /** Scrolls to a dashboard section, waiting for it to render (data loads after navigation). */
 export function scrollToSection(id: string, tries = 40) {
   const el = document.getElementById(id);
-  if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); return; }
+  if (el) {
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    // fallback: some browsers skip smooth scrolling (background tabs, power saving) — jump if we did not get there
+    setTimeout(() => {
+      const off = Math.abs(el.getBoundingClientRect().top - 90);
+      const canScroll = window.scrollY + window.innerHeight < document.documentElement.scrollHeight - 2;
+      if (off > 40 && canScroll) el.scrollIntoView({ block: "start" });
+    }, 700);
+    return;
+  }
   if (tries > 0) setTimeout(() => scrollToSection(id, tries - 1), 150);
 }
 

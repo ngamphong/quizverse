@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { fail, HttpError } from "@/lib/server/http";
 import { loadProfileRow, saveLearning } from "@/lib/server/profiles";
-import { currentUserId, supabaseServer } from "@/lib/supabase/server";
+import { currentUserId, supabaseAdmin, supabaseServer } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -20,6 +20,22 @@ export async function GET() {
     const row = await loadProfileRow(id);
     if (!row) throw new HttpError(404, "ไม่พบโปรไฟล์");
     return NextResponse.json({ profile: row.profile, role: row.role });
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** Renames the signed-in user (profiles.display_name — used in games, live rooms and as quiz author). */
+export async function PATCH(req: Request) {
+  try {
+    const id = await requireUser();
+    const raw = (await req.json().catch(() => null))?.name;
+    const name = typeof raw === "string" ? raw.replace(/\s+/g, " ").trim() : "";
+    if (!name) throw new HttpError(400, "กรุณากรอกชื่อ");
+    if (name.length > 40) throw new HttpError(400, "ชื่อยาวได้ไม่เกิน 40 ตัวอักษร");
+    const { error } = await supabaseAdmin().from("profiles").update({ display_name: name }).eq("id", id);
+    if (error) throw new HttpError(500, "บันทึกชื่อไม่สำเร็จ");
+    return NextResponse.json({ ok: true, name });
   } catch (e) {
     return fail(e);
   }

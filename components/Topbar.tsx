@@ -93,6 +93,9 @@ export default function Topbar() {
           </button>
         ))}
       </div>
+      <Link className="btn btn-ghost btn-sm" style={{ width: "100%" }} href="/account" onClick={() => { setMenu(false); setDrawer(false); }}>
+        {me ? "ตั้งค่าบัญชี (ชื่อ / รหัสผ่าน)" : "เปลี่ยนชื่อผู้เล่น"}
+      </Link>
       {sb && !loading && (me
         ? <button className="btn btn-ghost btn-sm" style={{ width: "100%" }} onClick={logout}>ออกจากระบบ</button>
         : <Link className="btn btn-primary btn-sm" style={{ width: "100%" }} href="/login">เข้าสู่ระบบ / สมัครสมาชิก</Link>)}

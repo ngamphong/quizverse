@@ -72,7 +72,7 @@ npm run dev
 ### เชื่อมฐานข้อมูล (Supabase)
 
 1. สร้างโปรเจกต์ที่ [supabase.com](https://supabase.com) (Region: Southeast Asia (Singapore))
-2. **SQL Editor → New query** วางไฟล์แล้วกด **Run** ตามลำดับ: [`supabase/schema.sql`](supabase/schema.sql) → [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421) → [`supabase/live.sql`](supabase/live.sql) (ห้องสดหลายเครื่อง) → [`supabase/teacher.sql`](supabase/teacher.sql) (รูปประกอบคำถาม) → [`supabase/quest-team.sql`](supabase/quest-team.sql) (Learning Quest + โหมดทีม)
+2. **SQL Editor → New query** วางไฟล์แล้วกด **Run** ตามลำดับ: [`supabase/schema.sql`](supabase/schema.sql) → [`supabase/seed.sql`](supabase/seed.sql) (ห้องตัวอย่าง PIN 587421) → [`supabase/live.sql`](supabase/live.sql) (ห้องสดหลายเครื่อง) → [`supabase/teacher.sql`](supabase/teacher.sql) (รูปประกอบคำถาม) → [`supabase/quest-team.sql`](supabase/quest-team.sql) (Learning Quest + โหมดทีม) → [`supabase/share.sql`](supabase/share.sql) (แบ่งปันข้อสอบในหน้าแรก)
 3. **Project Settings → API Keys** คัดลอกค่าไปใส่ใน `.env.local` (ดู `.env.example`):
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
 4. **Authentication → URL Configuration** ตั้ง Site URL เป็นลิงก์ Vercel และเพิ่ม `http://localhost:3000/**` กับ `https://<ลิงก์ vercel>/**` ใน Redirect URLs

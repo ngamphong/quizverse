@@ -32,11 +32,18 @@ export default function ResultView({ result }: { result: GameResult }) {
           <div className="lb">
             {players.map((p, i) => (
               <div key={p.name + i} className={p.me ? "me" : ""}>
-                <span>{i + 1}. {p.name}{p.bot && <span style={{ opacity: 0.7, fontSize: 12 }}> (จำลอง)</span>}</span>
+                <span>{p.rank && <span style={{ opacity: 0.6 }}>⋯ </span>}{p.rank ?? i + 1}. {p.name}{p.bot && <span style={{ opacity: 0.7, fontSize: 12 }}> (จำลอง)</span>}</span>
                 <b className="num">{p.score.toLocaleString()}</b>
               </div>
             ))}
           </div>
+          {result.playerCount !== undefined && (
+            <p className="small" style={{ opacity: 0.85, marginTop: 10 }}>
+              {result.playerCount > 1
+                ? `อันดับจากนักเรียนที่เล่นชุดนี้ ${result.playerCount.toLocaleString()} คน (คะแนนดีที่สุดของแต่ละคน)`
+                : "คุณเป็นคนแรกที่เล่นชุดนี้ ชวนเพื่อนมาเล่นด้วย PIN เดียวกันเพื่อแข่งอันดับ"}
+            </p>
+          )}
         </div>
         <div className="card summary">
           <p className="eyebrow">สรุปของคุณ</p>

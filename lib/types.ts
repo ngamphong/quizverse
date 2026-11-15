@@ -29,6 +29,8 @@ export interface GameResult {
   maxLevel: number;
   answers: AnswerRecord[];
   players: Player[];
+  /** distinct players on this quiz's solo leaderboard, including you */
+  playerCount?: number;
 }
 
 export interface Quiz {
@@ -86,5 +88,6 @@ export interface Player {
   name: string;
   score: number;
   me?: boolean;
-  bot?: boolean;
+  bot?: boolean; // only in results saved before the real leaderboard
+  rank?: number; // set when the row is shown out of order (you, below the top 10)
 }

@@ -116,7 +116,31 @@ export async function nextQuestion(id: string, token: string) {
   return { done: false as const, index: s.asked.length + 1, total: s.total, score: s.score, question: toClient(q) };
 }
 
-const BOTS: [string, number][] = [["Mild", 0.82], ["Bank", 0.74], ["Ploy", 0.66], ["Tong", 0.55], ["Fah", 0.48]];
+const TOP_N = 10;
+
+/**
+ * Real leaderboard for a quiz: each other student's best finished solo score
+ * (logged-in players by account, guests by nickname), plus this game.
+ */
+async function leaderboard(s: Session): Promise<{ players: Player[]; playerCount: number }> {
+  const { data } = await supabaseAdmin().from("game_sessions")
+    .select("user_id, nickname, score")
+    .eq("quiz_id", s.quiz_id).not("finished_at", "is", null).neq("id", s.id)
+    .order("score", { ascending: false }).limit(1000);
+
+  const best = new Map<string, Player>();
+  for (const r of data ?? []) {
+    if (s.user_id && r.user_id === s.user_id) continue; // your own earlier runs
+    const key = r.user_id ? `u:${r.user_id}` : `n:${String(r.nickname).trim().toLowerCase()}`;
+    if (!best.has(key)) best.set(key, { name: r.nickname, score: r.score }); // rows are sorted, first is best
+  }
+  const all: Player[] = [...best.values(), { name: s.nickname, score: s.score, me: true }]
+    .sort((a, b) => b.score - a.score || (a.me ? -1 : b.me ? 1 : 0)); // ties go to you
+  const myRank = all.findIndex((p) => p.me) + 1;
+  const players = all.slice(0, TOP_N);
+  if (myRank > TOP_N) players.push({ ...all[myRank - 1], rank: myRank });
+  return { players, playerCount: all.length };
+}
 
 async function finish(s: Session): Promise<GameResult> {
   const db = supabaseAdmin();
@@ -127,14 +151,8 @@ async function finish(s: Session): Promise<GameResult> {
     return q ? [{ q, choice: r.choice, correct: r.correct, points: r.points, conf: r.confidence as Conf }] : [];
   });
 
-  // simulated classmates until live multi-device rooms arrive in phase 4
-  const bots: Player[] = BOTS.map(([name, skill]) => {
-    let score = 0;
-    for (let i = 0; i < s.total; i++) if (Math.random() < skill) score += Math.round(500 + 450 * Math.random()) + Math.floor(Math.random() * 2) * 100;
-    return { name, score, bot: true };
-  });
-  const players = [...bots, { name: s.nickname, score: s.score, me: true }].sort((a, b) => b.score - a.score);
-  const result: GameResult = { name: s.nickname, score: s.score, total: s.total, maxLevel: s.max_level, answers, players };
+  const { players, playerCount } = await leaderboard(s);
+  const result: GameResult = { name: s.nickname, score: s.score, total: s.total, maxLevel: s.max_level, answers, players, playerCount };
 
   // finish exactly once; only the call that flips finished_at updates Learning DNA
   const { data: upd } = await db.from("game_sessions")

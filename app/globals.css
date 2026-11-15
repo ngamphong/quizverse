@@ -329,6 +329,14 @@ textarea { resize: vertical; min-height: 90px }
 .lb { display: flex; flex-direction: column; gap: 6px; background: rgba(255, 255, 255, .12); border-radius: 14px; padding: 10px }
 .lb div { display: flex; justify-content: space-between; padding: 4px 8px; border-radius: 8px; font-size: 14px }
 .lb div.me { background: rgba(255, 255, 255, .22); font-weight: 600 }
+/* projector-size podium on the host screen */
+.podium-wrap.big .pod { max-width: 200px }
+.podium-wrap.big .pod .who { font-size: 18px }
+.podium-wrap.big .pod .pts { font-size: 14px }
+.podium-wrap.big .pod.p1 .block { height: 170px }
+.podium-wrap.big .pod.p2 .block { height: 125px }
+.podium-wrap.big .pod.p3 .block { height: 95px }
+.podium-wrap.big .lb div { font-size: 16px; padding: 6px 10px }
 .summary { display: flex; flex-direction: column; gap: 12px }
 .big-score { font: 700 40px var(--f-display); color: var(--violet) }
 .srow { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px }

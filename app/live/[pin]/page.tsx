@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Leaderboard } from "@/components/LiveBoard";
 import MistakeHelper from "@/components/MistakeHelper";
+import Podium, { type PodiumRow } from "@/components/Podium";
 import { TeamBoard, TeamRevealList, TeamVotes } from "@/components/TeamViews";
 import { CONF_TXT, KEYS, TIME_LIMIT } from "@/lib/constants";
 import { TEAM_NAMES } from "@/lib/liveTypes";
@@ -231,23 +232,28 @@ export default function LivePlayerPage() {
         );
       })()}
 
-      {s.state === "ended" && (
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {s.teamMode && s.teams?.length ? (
-            <>
-              <h3 style={{ fontSize: 22 }}>จบเกม! {s.teams[0].name} ชนะ{s.teams[0].mine ? " (ทีมของคุณ!)" : ""}</h3>
-              <TeamBoard teams={s.teams} />
-              <h3 style={{ fontSize: 15 }}>คะแนนรายคน</h3>
-            </>
-          ) : (
-            <h3 style={{ fontSize: 22 }}>จบเกม! คุณได้อันดับ {s.me?.rank} จาก {s.playerCount} คน</h3>
-          )}
-          <p className="big-score num">{(s.me?.score ?? 0).toLocaleString()} คะแนน</p>
-          <Leaderboard rows={s.leaderboard ?? []} />
-          <p className="small muted">{me ? "ผลถูกบันทึกเข้า Learning DNA ในบัญชีของคุณแล้ว" : "ผลถูกบันทึกเข้า Learning DNA ในเครื่องนี้แล้ว"}</p>
-          <Link className="btn btn-primary" href="/dna">ดูการวิเคราะห์การเรียนรู้</Link>
-        </div>
-      )}
+      {s.state === "ended" && (() => {
+        const team = s.teamMode && s.teams?.length ? s.teams : null;
+        const rows: PodiumRow[] = team
+          ? team.map((t) => ({ name: t.name, score: t.score, me: t.mine }))
+          : [...(s.leaderboard ?? [])];
+        if (!team && s.me && s.me.rank > rows.length) rows.push({ name: s.me.name, score: s.me.score, me: true, rank: s.me.rank });
+        return (
+          <>
+            <Podium
+              title={team ? `จบเกม! ${team[0].name} ชนะ${team[0].mine ? " (ทีมของคุณ!)" : ""}` : "ผลการเล่นเกม"}
+              rows={rows}
+              note={team ? "อันดับทีม · คะแนนรายคนอยู่ด้านล่าง" : `คุณได้อันดับ ${s.me?.rank ?? "-"} จาก ${s.playerCount} คน`} />
+            <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <p className="eyebrow">สรุปของคุณ</p>
+              <p className="big-score num">{(s.me?.score ?? 0).toLocaleString()} คะแนน</p>
+              {team && <><h3 style={{ fontSize: 15 }}>คะแนนรายคน</h3><Leaderboard rows={s.leaderboard ?? []} /></>}
+              <p className="small muted">{me ? "ผลถูกบันทึกเข้า Learning DNA ในบัญชีของคุณแล้ว" : "ผลถูกบันทึกเข้า Learning DNA ในเครื่องนี้แล้ว"}</p>
+              <Link className="btn btn-primary" href="/dna">ดูการวิเคราะห์การเรียนรู้</Link>
+            </div>
+          </>
+        );
+      })()}
       {!s.teamMode && <p className="small muted" style={{ textAlign: "center" }}>ความมั่นใจที่เลือก: {CONF_TXT[conf]} · คะแนนตรวจและจับเวลาโดยเซิร์ฟเวอร์</p>}
     </section>
   );

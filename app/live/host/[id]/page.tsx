@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Distribution, Leaderboard } from "@/components/LiveBoard";
+import Podium from "@/components/Podium";
 import { TeamBoard, TeamRevealList } from "@/components/TeamViews";
 import { KEYS, LEVEL, TIME_LIMIT } from "@/lib/constants";
 import { toast } from "@/lib/storage";
@@ -138,13 +139,18 @@ export default function HostPage() {
       )}
 
       {s.state === "ended" && (
-        <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 560, width: "100%", alignSelf: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720, width: "100%", alignSelf: "center" }}>
           {s.teamMode && s.teams?.length ? (
-            <><h3 style={{ fontSize: 22 }}>จบเกม · {s.teams[0].name} ชนะ!</h3><TeamBoard teams={s.teams} /><h3 style={{ fontSize: 16 }}>คะแนนรายคน</h3></>
-          ) : <h3 style={{ fontSize: 22 }}>จบเกม · อันดับรวม</h3>}
-          <Leaderboard rows={s.leaderboard ?? []} />
+            <>
+              <Podium big title={`จบเกม · ${s.teams[0].name} ชนะ!`} rows={s.teams.map((t) => ({ name: t.name, score: t.score }))} />
+              <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <h3 style={{ fontSize: 16 }}>สมาชิกทีม</h3><TeamBoard teams={s.teams} />
+                <h3 style={{ fontSize: 16 }}>คะแนนรายคน</h3><Leaderboard rows={s.leaderboard ?? []} />
+              </div>
+            </>
+          ) : <Podium big title="จบเกม · อันดับรวม" rows={s.leaderboard ?? []} note={`ผู้เล่นทั้งหมด ${s.playerCount} คน`} />}
           <p className="small muted">ผลของผู้เล่นที่เข้าสู่ระบบถูกบันทึกเข้า Learning DNA แล้ว</p>
-          <Link className="btn btn-ghost" href="/join">กลับไปเลือกชุดข้อสอบ</Link>
+          <Link className="btn btn-ghost" href="/join" style={{ alignSelf: "flex-start" }}>กลับไปเลือกชุดข้อสอบ</Link>
         </div>
       )}
     </section>

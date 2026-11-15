@@ -3,12 +3,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { CONF_TXT, LEVEL } from "@/lib/constants";
 import type { GameResult } from "@/lib/types";
+import Podium from "./Podium";
 
 /** Podium, leaderboard, personal summary and answer review after a game. */
 export default function ResultView({ result }: { result: GameResult }) {
   const [showReview, setShowReview] = useState(false);
   const { players, answers, name } = result;
-  const top = players.slice(0, 3);
   const n = answers.length || 1;
   const right = answers.filter((a) => a.correct).length;
   const guessed = answers.filter((a) => a.correct && a.conf === "guess").length;
@@ -18,33 +18,9 @@ export default function ResultView({ result }: { result: GameResult }) {
   return (
     <section className="view">
       <div className="result">
-        <div className="podium-wrap">
-          <h2 style={{ fontSize: 26 }}>ผลการเล่นเกม</h2>
-          <div className="podium">
-            {[1, 0, 2].filter((i) => top[i]).map((i) => (
-              <div key={i} className={`pod p${i + 1}${top[i].me ? " me" : ""}`}>
-                <span className="who">{top[i].name}</span>
-                <span className="pts num">{top[i].score.toLocaleString()} คะแนน</span>
-                <div className="block">{i + 1}</div>
-              </div>
-            ))}
-          </div>
-          <div className="lb">
-            {players.map((p, i) => (
-              <div key={p.name + i} className={p.me ? "me" : ""}>
-                <span>{p.rank && <span style={{ opacity: 0.6 }}>⋯ </span>}{p.rank ?? i + 1}. {p.name}{p.bot && <span style={{ opacity: 0.7, fontSize: 12 }}> (จำลอง)</span>}</span>
-                <b className="num">{p.score.toLocaleString()}</b>
-              </div>
-            ))}
-          </div>
-          {result.playerCount !== undefined && (
-            <p className="small" style={{ opacity: 0.85, marginTop: 10 }}>
-              {result.playerCount > 1
-                ? `อันดับจากนักเรียนที่เล่นชุดนี้ ${result.playerCount.toLocaleString()} คน (คะแนนดีที่สุดของแต่ละคน)`
-                : "คุณเป็นคนแรกที่เล่นชุดนี้ ชวนเพื่อนมาเล่นด้วย PIN เดียวกันเพื่อแข่งอันดับ"}
-            </p>
-          )}
-        </div>
+        <Podium title="ผลการเล่นเกม" rows={players} note={result.playerCount === undefined ? null : result.playerCount > 1
+          ? `อันดับจากนักเรียนที่เล่นชุดนี้ ${result.playerCount.toLocaleString()} คน (คะแนนดีที่สุดของแต่ละคน)`
+          : "คุณเป็นคนแรกที่เล่นชุดนี้ ชวนเพื่อนมาเล่นด้วย PIN เดียวกันเพื่อแข่งอันดับ"} />
         <div className="card summary">
           <p className="eyebrow">สรุปของคุณ</p>
           <div className="row"><div className="avatar">{name.charAt(0).toUpperCase()}</div><b style={{ fontFamily: "var(--f-display)" }}>{name}</b></div>

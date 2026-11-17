@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import SoundToggle from "./SoundToggle";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { loadProfile } from "@/lib/storage";
@@ -93,6 +94,7 @@ export default function Topbar() {
           </button>
         ))}
       </div>
+      <SoundToggle withLabel />
       <Link className="btn btn-ghost btn-sm" style={{ width: "100%" }} href="/account" onClick={() => { setMenu(false); setDrawer(false); }}>
         {me ? "ตั้งค่าบัญชี (ชื่อ / รหัสผ่าน)" : "เปลี่ยนชื่อผู้เล่น"}
       </Link>

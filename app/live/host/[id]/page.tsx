@@ -4,6 +4,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Distribution, Leaderboard } from "@/components/LiveBoard";
 import Podium from "@/components/Podium";
+import QrCode from "@/components/QrCode";
 import { TeamBoard, TeamRevealList } from "@/components/TeamViews";
 import { KEYS, LEVEL, TIME_LIMIT } from "@/lib/constants";
 import { toast } from "@/lib/storage";
@@ -68,8 +69,14 @@ export default function HostPage() {
       {s.state === "lobby" && (
         <div className="result">
           <div className="qcard" style={{ alignItems: "center", textAlign: "center", justifyContent: "center", gap: 14 }}>
-            <p style={{ opacity: 0.85 }}>เข้าที่ <b>{joinUrl}</b> แล้วกรอก PIN</p>
-            <p className="num" style={{ font: "800 clamp(44px,9vw,84px)/1 var(--f-display)", letterSpacing: 10 }}>{s.pin}</p>
+            <div className="qr-join">
+              {origin && <QrCode value={`${origin}/live/${s.pin}`} size={200} label={`สแกนเพื่อเข้าห้อง ${s.pin}`} />}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+                <p style={{ opacity: 0.9, fontWeight: 600 }}>สแกน QR ด้วยกล้องมือถือ เข้าห้องได้ทันที</p>
+                <p style={{ opacity: 0.85 }}>หรือเข้าที่ <b style={{ overflowWrap: "anywhere" }}>{joinUrl}</b> แล้วกรอก PIN</p>
+                <p className="num" style={{ font: "800 clamp(40px,8vw,76px)/1 var(--f-display)", letterSpacing: 8 }}>{s.pin}</p>
+              </div>
+            </div>
             <button className="btn btn-white" style={{ background: "#fff", color: "#4A2BC2" }} disabled={busy || s.playerCount === 0} onClick={() => act("start")}>
               {s.playerCount === 0 ? "รอผู้เล่นเข้าห้อง…" : `เริ่มเกม (${s.playerCount} คน) →`}
             </button>

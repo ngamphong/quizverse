@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import QrCode from "@/components/QrCode";
 import TeacherNav, { scrollToSection } from "@/components/TeacherNav";
 import { fmtDate } from "@/lib/format";
 import { toast } from "@/lib/storage";
@@ -25,6 +26,7 @@ export default function TeacherPage() {
   const [err, setErr] = useState("");
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [qrFor, setQrFor] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetch("/api/teacher/overview", { cache: "no-store" })
@@ -140,10 +142,23 @@ export default function TeacherPage() {
                       <Link className="btn btn-soft btn-sm" href={`/teacher/quiz/${z.id}`}>รายงาน / แก้ไข</Link>
                       <button className="btn btn-primary btn-sm" disabled={busy === z.pin} onClick={() => openLive(z.pin)}>เปิดห้องสด</button>
                       <button className="btn btn-ghost btn-sm" disabled={busy === z.pin} onClick={() => openLive(z.pin, true)}>ห้องสดแบบทีม</button>
+                      <button className="btn btn-ghost btn-sm" aria-expanded={qrFor === z.pin} onClick={() => setQrFor(qrFor === z.pin ? null : z.pin)}>QR เล่นเดี่ยว</button>
                       <button className="btn btn-ghost btn-sm" disabled={busy === z.id} onClick={() => remove(z.id)} style={confirmDel === z.id ? { color: "var(--bad)", borderColor: "var(--bad)" } : undefined}>
                         {confirmDel === z.id ? "ยืนยันลบ (ผลทั้งหมดจะหายด้วย)" : "ลบ"}
                       </button>
                     </div>
+                    {qrFor === z.pin && (
+                      <div className="qr-panel">
+                        <QrCode value={`${location.origin}/play/${z.pin}`} size={168} label={`สแกนเพื่อเล่น ${z.title}`} />
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                          <b>ให้นักเรียนสแกนเพื่อเล่นเดี่ยว (ทำการบ้าน/ทบทวน)</b>
+                          <span className="small muted" style={{ overflowWrap: "anywhere" }}>{location.origin}/play/{z.pin}</span>
+                          <span className="small muted">ห้องสดมี QR ของตัวเองบนหน้าจอครูหลังกด &quot;เปิดห้องสด&quot;</span>
+                          <button className="btn btn-ghost btn-sm" style={{ alignSelf: "flex-start" }}
+                            onClick={() => navigator.clipboard?.writeText(`${location.origin}/play/${z.pin}`).then(() => toast("คัดลอกลิงก์แล้ว"), () => {})}>คัดลอกลิงก์</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

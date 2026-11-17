@@ -7,6 +7,7 @@ import MistakeHelper from "@/components/MistakeHelper";
 import ResultView from "@/components/ResultView";
 import { LEVEL, TIME_LIMIT } from "@/lib/constants";
 import { applyToProfile } from "@/lib/profile";
+import { play } from "@/lib/sound";
 import { loadProfile, saveProfile } from "@/lib/storage";
 import type { ClientQuestion, Conf, GameResult, Question } from "@/lib/types";
 import { useMe } from "@/lib/useMe";
@@ -43,6 +44,7 @@ export default function PlayPage() {
   const [conf, setConf] = useState<Conf>("sure");
   const [fb, setFb] = useState<Feedback | null>(null);
   const [answered, setAnswered] = useState<Answered | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
   const [result, setResult] = useState<GameResult | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -60,6 +62,7 @@ export default function PlayPage() {
   const submit = useCallback(async (choice: number) => {
     if (phaseRef.current !== "question" || busyRef.current || !session.current) return;
     busyRef.current = true; setBusy(true);
+    if (choice >= 0) setPending(choice); // show the pick at once; grading comes back from the server
     stopTimer();
     try {
       const a = await api<Answered>("/api/game/answer", { sessionId: session.current.id, token: session.current.token, choice, conf: confRef.current });
@@ -74,6 +77,7 @@ export default function PlayPage() {
       setPhase("feedback");
       setTimeout(() => nextBtn.current?.focus({ preventScroll: true }), 0);
     } catch (e) {
+      setPending(null);
       setErr(e instanceof Error ? e.message : "ส่งคำตอบไม่สำเร็จ");
       setPhase("error");
     } finally {
@@ -82,7 +86,7 @@ export default function PlayPage() {
   }, []);
 
   const showQuestion = useCallback((question: ClientQuestion) => {
-    setQ(question); setFb(null); setAnswered(null);
+    setQ(question); setFb(null); setAnswered(null); setPending(null);
     confRef.current = "sure"; setConf("sure");
     setTimeLeft(TIME_LIMIT);
     setPhase("question");
@@ -129,6 +133,7 @@ export default function PlayPage() {
         // signed-in players: the server already updated Learning DNA; guests keep it in this browser
         if (!me) saveProfile(applyToProfile(loadProfile(), n.result.answers, false));
         setResult(n.result);
+        play("finish");
         setPhase("result");
       } else {
         setIndex(n.index); setTotal(n.total); setScore(n.score);
@@ -160,7 +165,7 @@ export default function PlayPage() {
     <ArenaView
       roomLabel={`ห้อง ${pin}`} index={index} total={total} topic={q.topic} level={q.level} q={q.q} choices={q.choices} image={q.image}
       score={score} timeLeft={timeLeft} conf={conf} onConf={(c) => { confRef.current = c; setConf(c); }}
-      onAnswer={submit} feedback={fb} onNext={next} busy={busy} nextRef={nextBtn}
+      onAnswer={submit} feedback={fb} onNext={next} busy={busy} pending={pending} nextRef={nextBtn}
       nextLabel={answered?.done ? "ดูผลการเล่น →" : "ข้อต่อไป →"}
     >
       {answered && !answered.correct && <MistakeHelper key={answered.question.id} question={answered.question} choice={answered.choice} />}

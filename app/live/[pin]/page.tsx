@@ -1,10 +1,12 @@
 "use client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Leaderboard } from "@/components/LiveBoard";
 import MistakeHelper from "@/components/MistakeHelper";
 import Podium, { type PodiumRow } from "@/components/Podium";
+import SoundToggle from "@/components/SoundToggle";
+import { play } from "@/lib/sound";
 import { TeamBoard, TeamRevealList, TeamVotes } from "@/components/TeamViews";
 import { CONF_TXT, KEYS, TIME_LIMIT } from "@/lib/constants";
 import { TEAM_NAMES } from "@/lib/liveTypes";
@@ -49,6 +51,20 @@ export default function LivePlayerPage() {
     setConf("sure"); setSendErr(""); setPick(null); setReason("");
   }, [qIndex, sentFor]);
 
+  // sounds: answer result at the reveal, fanfare at the end, soft tick in the last 5 seconds
+  const phaseKey = s ? `${s.state}:${s.index}` : "";
+  const lastRef = useRef("");
+  useEffect(() => {
+    if (!s || phaseKey === lastRef.current) return;
+    const first = lastRef.current === "";
+    lastRef.current = phaseKey;
+    if (first) return; // no sound for the state we arrived in
+    if (s.state === "reveal") play(s.me?.last ? (s.me.last.correct ? "correct" : "wrong") : "timeout");
+    else if (s.state === "ended") play("finish");
+  }, [s, phaseKey]);
+  const tickLeft = s?.state === "question" && !(s.me?.answered || sentFor === s.index) ? secondsLeft() : 0;
+  useEffect(() => { if (tickLeft > 0 && tickLeft <= 5) play("tick"); }, [tickLeft]);
+
   // guests keep Learning DNA in this browser; apply the game once when it ends
   useEffect(() => {
     if (s?.state !== "ended" || me || !s.me?.answers?.length) return;
@@ -80,15 +96,19 @@ export default function LivePlayerPage() {
     if (!s.teamMode && sentFor === s.index) return;
     if (s.teamMode && (why ?? "").trim().length < 3) return setSendErr("เขียนเหตุผลสั้นๆ อย่างน้อย 3 ตัวอักษร ให้เพื่อนในทีมอ่าน");
     setSending(true); setSendErr("");
+    play("tap");
+    const idx = s.index, before = sentFor;
+    if (!s.teamMode) setSentFor(idx); // show "sent" at once; undone below if the server refuses
     try {
       const r = await fetch("/api/live/answer", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pid: creds.pid, token: creds.token, choice, conf, reason: why }) });
-      if (r.ok) setSentFor(s.index);
+      if (r.ok) setSentFor(idx);
       else {
         const d = await r.json().catch(() => ({}));
-        if (r.status === 409 && !/หมดเวลา/.test(d.error ?? "")) setSentFor(s.index);
-        else setSendErr(d.error || "ส่งคำตอบไม่สำเร็จ");
+        if (r.status === 409 && !/หมดเวลา/.test(d.error ?? "")) setSentFor(idx);
+        else { setSentFor(before); setSendErr(d.error || "ส่งคำตอบไม่สำเร็จ"); }
       }
     } catch {
+      setSentFor(before);
       setSendErr("เชื่อมต่อไม่ได้ ลองกดส่งอีกครั้ง");
     } finally {
       setSending(false);
@@ -130,7 +150,10 @@ export default function LivePlayerPage() {
     <section className="view" style={{ maxWidth: 720, width: "100%", alignSelf: "center" }}>
       <div className="row" style={{ justifyContent: "space-between" }}>
         <span className="pill">ห้องสด {s.pin}{s.teamMode ? " · โหมดทีม" : ""}</span>
-        <span className="pill num">{s.me?.name}{teamLabel ? ` · ${teamLabel}` : ""} · {(s.me?.score ?? 0).toLocaleString()} คะแนน{s.me?.rank ? ` · อันดับ ${s.me.rank}` : ""}</span>
+        <div className="row" style={{ gap: 8 }}>
+          <span className="pill num">{s.me?.name}{teamLabel ? ` · ${teamLabel}` : ""} · {(s.me?.score ?? 0).toLocaleString()} คะแนน{s.me?.rank ? ` · อันดับ ${s.me.rank}` : ""}</span>
+          <SoundToggle />
+        </div>
       </div>
       {error && <p className="err">{error}</p>}
 

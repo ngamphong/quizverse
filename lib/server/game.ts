@@ -32,6 +32,14 @@ async function loadPool(quizId: string): Promise<Question[]> {
   return (data ?? []).map((r) => ({ ...r, qid: r.id }) as Question);
 }
 
+/** Just the question being answered (cheaper than the whole pool). */
+async function loadQuestion(quizId: string, id: string): Promise<Question | null> {
+  const { data } = await selectQuestions<Question>((cols) =>
+    supabaseAdmin().from("questions").select(cols).eq("quiz_id", quizId).eq("id", id).limit(1).returns<Question[]>());
+  const r = data?.[0];
+  return r ? ({ ...r, qid: r.id } as Question) : null;
+}
+
 async function loadSession(id: string, token: string): Promise<Session> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new HttpError(400, "รหัสเกมไม่ถูกต้อง");
   const { data } = await supabaseAdmin().from("game_sessions").select("*").eq("id", id).maybeSingle();
@@ -69,8 +77,7 @@ export async function answerQuestion(id: string, token: string, rawChoice: numbe
   const s = await loadSession(id, token);
   if (s.finished_at) throw new HttpError(409, "เกมนี้จบแล้ว");
   if (s.current_answered || !s.current_question || !s.current_started_at) throw new HttpError(409, "ตอบข้อนี้ไปแล้ว");
-  const pool = await loadPool(s.quiz_id);
-  const q = pool.find((x) => x.id === s.current_question);
+  const q = await loadQuestion(s.quiz_id, s.current_question);
   if (!q) throw new HttpError(409, "คำถามข้อนี้ถูกลบไปแล้ว");
 
   const elapsed = (Date.now() - Date.parse(s.current_started_at)) / 1000;

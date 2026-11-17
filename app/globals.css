@@ -305,6 +305,19 @@ textarea { resize: vertical; min-height: 90px }
 .choice .key { width: 32px; height: 32px; border-radius: 9px; background: rgba(255, 255, 255, .25); display: grid; place-items: center; flex: none; font-size: 15px }
 .choice[disabled] { cursor: default }
 .choice.dim { opacity: .35 }
+.choice:active:not([disabled]) { transform: scale(.97) }
+.choice.pending { outline: 4px solid var(--ink); outline-offset: 3px; animation: qv-pulse .8s ease-in-out infinite alternate }
+@keyframes qv-pulse { from { transform: scale(1) } to { transform: scale(.97) } }
+@media (prefers-reduced-motion: reduce) { .choice.pending { animation: none } }
+.sound-btn { display: inline-flex; align-items: center; gap: 6px; min-width: 40px; height: 40px; justify-content: center; padding: 0 10px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font: 600 13px var(--f-body, inherit) }
+.sound-btn[aria-pressed="false"] { color: var(--muted) }
+.sound-btn:hover { border-color: var(--violet) }
+.sound-btn.labeled { width: 100%; border-radius: 999px; height: 34px }
+/* QR join codes */
+.qr { background: #fff; border-radius: 14px; padding: 8px; flex: none; max-width: 100% }
+.qr svg { display: block; width: 100%; height: 100% }
+.qr-join { display: flex; align-items: center; gap: 20px; text-align: left; flex-wrap: wrap; justify-content: center }
+.qr-panel { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; border: 1.5px dashed var(--line); border-radius: var(--r-md); padding: 12px; margin-top: 4px }
 .choice.right { outline: 4px solid var(--ok); outline-offset: 3px }
 .choice.picked-wrong { outline: 4px solid var(--bad); outline-offset: 3px }
 .ch0 { background: var(--c1) } .ch1 { background: var(--c2) } .ch2 { background: var(--c3) } .ch3 { background: var(--c4) }

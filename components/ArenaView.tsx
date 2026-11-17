@@ -1,6 +1,9 @@
 "use client";
+import { useEffect } from "react";
 import { CONF_TXT, KEYS, LEVEL, TIME_LIMIT } from "@/lib/constants";
+import { play } from "@/lib/sound";
 import type { Conf } from "@/lib/types";
+import SoundToggle from "./SoundToggle";
 
 export interface Feedback {
   correct: boolean;
@@ -32,6 +35,8 @@ interface Props {
   onNext: () => void;
   nextLabel: string;
   busy?: boolean;
+  /** the choice just clicked, shown at once while the server grades it */
+  pending?: number | null;
   nextRef?: React.Ref<HTMLButtonElement>;
   /** extra content under the explanation (AI Mistake Explainer) */
   children?: React.ReactNode;
@@ -40,6 +45,14 @@ interface Props {
 /** The Quiz Arena screen, shared by live games (server-graded) and practice mode. */
 export default function ArenaView(p: Props) {
   const fb = p.feedback;
+
+  // sounds: result of the answer, and a soft tick for the last 5 seconds
+  useEffect(() => {
+    if (fb) play(fb.choice < 0 ? "timeout" : fb.correct ? "correct" : "wrong");
+  }, [fb]);
+  const ticking = !fb && p.pending == null && p.timeLeft > 0 && p.timeLeft <= 5;
+  useEffect(() => { if (ticking) play("tick"); }, [ticking, p.timeLeft]);
+
   let explain = "";
   if (fb) {
     explain = (fb.correct ? "" : `คำตอบที่ถูกคือ ${KEYS[fb.answer]}. ${p.choices[fb.answer]} — `) + fb.explain;
@@ -58,6 +71,7 @@ export default function ArenaView(p: Props) {
         <div className="timer" style={{ ["--p" as string]: `${(p.timeLeft / TIME_LIMIT) * 100}%` }} aria-label={`เหลือเวลา ${p.timeLeft} วินาที`}>
           <span className="num">{p.timeLeft}</span>
         </div>
+        <SoundToggle />
       </div>
 
       <div className="qcard">
@@ -80,8 +94,10 @@ export default function ArenaView(p: Props) {
         {p.choices.map((c, i) => {
           let cls = `choice ch${i}`;
           if (fb) cls += i === fb.answer ? " right" : i === fb.choice ? " picked-wrong" : " dim";
+          else if (p.pending != null) cls += i === p.pending ? " pending" : " dim";
           return (
-            <button key={i} className={cls} disabled={!!fb || p.busy} onClick={() => p.onAnswer(i)}>
+            <button key={i} className={cls} disabled={!!fb || p.busy || p.pending != null}
+              onClick={() => { play("tap"); p.onAnswer(i); }}>
               <span className="key">{KEYS[i]}</span><span>{c}</span>
             </button>
           );

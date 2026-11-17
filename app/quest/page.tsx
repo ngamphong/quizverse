@@ -9,6 +9,7 @@ import { applyToProfile } from "@/lib/profile";
 import { fetchProfile, storeProfile } from "@/lib/profileStore";
 import { applyQuest, PASS, QUEST_SIZE, recommend, STAGE_NAME, STAGES, stageOpen, stageStars, starsFor, subjectProgress } from "@/lib/quest";
 import type { AnswerRecord, Conf, Profile, Question } from "@/lib/types";
+import { useGameLock } from "@/lib/useGameLock";
 
 type View = { kind: "map" } | { kind: "loading"; subject: string; stage: number } | { kind: "play"; subject: string; stage: number; qs: Question[] }
   | { kind: "done"; subject: string; stage: number; correct: number; stars: number; xp: number; firstClear: boolean };
@@ -139,6 +140,7 @@ export default function QuestPage() {
 
 /** One stage run: 5 timed questions graded in the browser (personal practice). */
 function QuestRun({ subject, stage, qs, onDone, onQuit }: { subject: string; stage: number; qs: Question[]; onDone: (a: AnswerRecord[]) => void; onQuit: () => void }) {
+  useGameLock(true); // leave only with the "ออกจากด่าน" button
   const [i, setI] = useState(0);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);

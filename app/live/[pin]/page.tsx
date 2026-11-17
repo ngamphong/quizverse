@@ -14,6 +14,7 @@ import { applyToProfile } from "@/lib/profile";
 import { loadProfile, saveProfile } from "@/lib/storage";
 import type { Conf } from "@/lib/types";
 import { useLiveState, useTicker } from "@/lib/useLive";
+import { useGameLock } from "@/lib/useGameLock";
 import { useMe } from "@/lib/useMe";
 
 interface Creds { pid: string; token: string }
@@ -37,7 +38,12 @@ export default function LivePlayerPage() {
   const [reason, setReason] = useState("");
   const [teamMode, setTeamMode] = useState(false);
 
-  useEffect(() => { setCreds(readCreds(pin)); setName(loadProfile().name); setReady(true); }, [pin]);
+  useEffect(() => {
+    const p = loadProfile();
+    setCreds(readCreds(pin));
+    setName(p.example || p.name === "Student01" ? "" : p.name); // guests must type their own name
+    setReady(true);
+  }, [pin]);
 
   const url = useMemo(() => (creds ? `/api/live/state?pid=${creds.pid}&token=${encodeURIComponent(creds.token)}` : null), [creds]);
   const { state: s, error, refresh, secondsLeft } = useLiveState(url, creds ? pin : null, { answers: teamMode });
@@ -64,6 +70,9 @@ export default function LivePlayerPage() {
   }, [s, phaseKey]);
   const tickLeft = s?.state === "question" && !(s.me?.answered || sentFor === s.index) ? secondsLeft() : 0;
   useEffect(() => { if (tickLeft > 0 && tickLeft <= 5) play("tick"); }, [tickLeft]);
+
+  // in the room and the game is not over: no leaving through the menu or the back button
+  useGameLock(!!creds && !!s && s.state !== "ended");
 
   // guests keep Learning DNA in this browser; apply the game once when it ends
   useEffect(() => {
@@ -125,7 +134,7 @@ export default function LivePlayerPage() {
           <p className="eyebrow">ห้องสด · PIN {pin}</p>
           <h2 style={{ fontSize: 24 }}>เข้าห้องเรียนสด</h2>
           {me ? <p>เล่นในชื่อ <b>{me.name}</b></p> : (
-            <label className="fld">ชื่อผู้เล่น<input type="text" id="liveName" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} /></label>
+            <label className="fld">ชื่อผู้เล่น (ครูและเพื่อนจะเห็นชื่อนี้)<input type="text" id="liveName" maxLength={20} autoComplete="nickname" autoFocus placeholder="เช่น มายด์ ม.4/2" value={name} onChange={(e) => { setName(e.target.value); setErr(""); }} /></label>
           )}
           <p className="err">{err}</p>
           <button className="btn btn-primary" type="submit" disabled={joining}>{joining ? "กำลังเข้าห้อง…" : "เข้าห้อง →"}</button>

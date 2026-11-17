@@ -431,3 +431,11 @@ table.data td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertica
   .trend { margin-left: 90px }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important } }
+
+/* in a game: no way out through the site navigation (useGameLock sets html[data-ingame]) */
+html[data-ingame] .topbar .hdr-nav,
+html[data-ingame] .topbar .burger,
+html[data-ingame] .topbar .user-menu,
+html[data-ingame] .drawer { display: none !important }
+html[data-ingame] .topbar .brand { pointer-events: none }
+html[data-ingame] .topbar .hdr-right::before { content: "กำลังเล่น"; font-size: 12px; font-weight: 700; color: var(--violet); border: 1.5px solid var(--violet); border-radius: 999px; padding: 4px 10px }

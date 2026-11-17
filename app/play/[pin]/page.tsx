@@ -10,9 +10,13 @@ import { applyToProfile } from "@/lib/profile";
 import { play } from "@/lib/sound";
 import { loadProfile, saveProfile } from "@/lib/storage";
 import type { ClientQuestion, Conf, GameResult, Question } from "@/lib/types";
+import { useGameLock } from "@/lib/useGameLock";
 import { useMe } from "@/lib/useMe";
 
-type Phase = "loading" | "error" | "question" | "feedback" | "result";
+type Phase = "loading" | "name" | "error" | "question" | "feedback" | "result";
+
+/** A name the guest really typed before (not the sample profile's placeholder). */
+const savedGuestName = () => { const p = loadProfile(); return p.example || p.name === "Student01" ? "" : p.name; };
 
 async function api<T>(path: string, body: object): Promise<T> {
   let r: Response;
@@ -47,6 +51,8 @@ export default function PlayPage() {
   const [pending, setPending] = useState<number | null>(null);
   const [result, setResult] = useState<GameResult | null>(null);
   const [busy, setBusy] = useState(false);
+  const [guestName, setGuestName] = useState("");
+  const [nameErr, setNameErr] = useState("");
 
   const session = useRef<{ id: string; token: string } | null>(null);
   const phaseRef = useRef<Phase>("loading");
@@ -99,18 +105,38 @@ export default function PlayPage() {
     }, 250);
   }, [submit]);
 
-  // start once (guards against React StrictMode running effects twice in dev)
-  useEffect(() => {
-    if (started.current || meLoading) return;
+  const begin = useCallback((nickname: string) => {
+    if (started.current) return;
     started.current = true;
-    api<Start>("/api/game/start", { pin, nickname: loadProfile().name })
+    setPhase("loading");
+    api<Start>("/api/game/start", { pin, nickname })
       .then((s) => {
         session.current = { id: s.sessionId, token: s.token };
         setTotal(s.total); setIndex(s.index); setScore(s.score);
         showQuestion(s.question);
       })
       .catch((e) => { setErr(e instanceof Error ? e.message : "เริ่มเกมไม่สำเร็จ"); setPhase("error"); });
-  }, [pin, meLoading, showQuestion]);
+  }, [pin, showQuestion]);
+
+  // members start straight away (the server uses their account name); guests type a name first
+  useEffect(() => {
+    if (started.current || meLoading || phaseRef.current !== "loading") return;
+    if (me) begin(me.name);
+    else { setGuestName(savedGuestName()); setPhase("name"); }
+  }, [me, meLoading, begin]);
+
+  function submitName(e: React.FormEvent) {
+    e.preventDefault();
+    const n = guestName.replace(/s+/g, " ").trim();
+    if (!n) return setNameErr("กรุณาใส่ชื่อก่อนเข้าเล่น");
+    if (n.length > 20) return setNameErr("ชื่อยาวได้ไม่เกิน 20 ตัวอักษร");
+    const p = loadProfile();
+    if (p.name !== n) saveProfile({ ...p, name: n });
+    begin(n);
+  }
+
+  // no leaving through the menu or the back button while answering
+  useGameLock(phase === "question" || phase === "feedback");
 
   useEffect(() => () => stopTimer(), []);
 
@@ -148,6 +174,22 @@ export default function PlayPage() {
   }
 
   if (phase === "loading") return <p className="loading">กำลังเตรียมห้องเกม…</p>;
+  if (phase === "name")
+    return (
+      <section className="view" style={{ alignItems: "center" }}>
+        <form className="card join-card" style={{ width: "100%", maxWidth: 420 }} onSubmit={submitName} noValidate>
+          <p className="eyebrow">เล่นเดี่ยว · PIN {pin}</p>
+          <h2 style={{ fontSize: 24 }}>ใส่ชื่อเพื่อเข้าเล่น</h2>
+          <label className="fld">ชื่อผู้เล่น (แสดงในตารางอันดับ)
+            <input type="text" id="playName" maxLength={20} autoComplete="nickname" autoFocus value={guestName}
+              placeholder="เช่น มายด์ ม.4/2" onChange={(e) => { setGuestName(e.target.value); setNameErr(""); }} />
+          </label>
+          <p className="err">{nameErr}</p>
+          <button className="btn btn-primary" type="submit">เริ่มเล่น →</button>
+          <p className="small muted">มีบัญชีอยู่แล้ว? <Link href="/login">เข้าสู่ระบบ</Link> เพื่อเก็บผลไว้ในบัญชี</p>
+        </form>
+      </section>
+    );
   if (phase === "error")
     return (
       <section className="view">

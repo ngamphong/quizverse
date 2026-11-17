@@ -9,6 +9,7 @@ import { gradeAnswer } from "@/lib/grading";
 import { applyToProfile } from "@/lib/profile";
 import { fetchProfile, storeProfile } from "@/lib/profileStore";
 import { toast } from "@/lib/storage";
+import { useGameLock } from "@/lib/useGameLock";
 import type { AnswerRecord, Conf, Question } from "@/lib/types";
 
 /**
@@ -30,6 +31,7 @@ export default function PracticePage() {
   const nextBtn = useRef<HTMLButtonElement>(null);
 
   const stop = () => { if (timer.current) { clearInterval(timer.current); timer.current = null; } };
+  useGameLock(!!items?.length);
 
   useEffect(() => {
     fetchProfile().then(({ profile, remote }) => {

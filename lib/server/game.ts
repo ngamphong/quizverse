@@ -154,10 +154,11 @@ async function leaderboard(s: Session): Promise<{ players: Player[]; playerCount
     .eq("quiz_id", s.quiz_id).not("finished_at", "is", null).neq("id", s.id)
     .order("score", { ascending: false }).limit(1000);
 
+  const myKey = s.user_id ? `u:${s.user_id}` : `n:${s.nickname.trim().toLowerCase()}`;
   const best = new Map<string, Player>();
   for (const r of data ?? []) {
-    if (s.user_id && r.user_id === s.user_id) continue; // your own earlier runs
     const key = r.user_id ? `u:${r.user_id}` : `n:${String(r.nickname).trim().toLowerCase()}`;
+    if (key === myKey) continue; // your own earlier runs (same account, or same guest name)
     if (!best.has(key)) best.set(key, { name: r.nickname, score: r.score }); // rows are sorted, first is best
   }
   const all: Player[] = [...best.values(), { name: s.nickname, score: s.score, me: true }]

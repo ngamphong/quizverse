@@ -73,12 +73,16 @@ export async function startGame(pin: string, nickname: string, userId: string | 
   return { sessionId: s.id as string, token, title: quiz.title as string, pin: quiz.pin as string, total, index: 1, timeLimit: TIME_LIMIT, score: 0, question: toClient(first) };
 }
 
-export async function answerQuestion(id: string, token: string, rawChoice: number, rawConf: string) {
+export async function answerQuestion(id: string, token: string, rawChoice: number, rawConf: string, timing: string[] = []) {
+  let t = performance.now();
+  const lap = (name: string) => { const n = performance.now(); timing.push(`${name};dur=${(n - t).toFixed(0)}`); t = n; };
   const s = await loadSession(id, token);
+  lap("session");
   if (s.finished_at) throw new HttpError(409, "เกมนี้จบแล้ว");
   if (s.current_answered || !s.current_question || !s.current_started_at) throw new HttpError(409, "ตอบข้อนี้ไปแล้ว");
   const q = await loadQuestion(s.quiz_id, s.current_question);
   if (!q) throw new HttpError(409, "คำถามข้อนี้ถูกลบไปแล้ว");
+  lap("question");
 
   const elapsed = (Date.now() - Date.parse(s.current_started_at)) / 1000;
   let choice = Number.isInteger(rawChoice) && rawChoice >= 0 && rawChoice <= 3 ? rawChoice : -1;
@@ -94,7 +98,9 @@ export async function answerQuestion(id: string, token: string, rawChoice: numbe
     .update({ current_answered: true, score: s.score + g.points, level: adj.level, prev_level: s.level, streak: adj.streak })
     .eq("id", s.id).eq("current_answered", false).select("id");
   if (!upd?.length) throw new HttpError(409, "ตอบข้อนี้ไปแล้ว");
+  lap("update");
   await db.from("answers").insert({ session_id: s.id, question_id: q.id, choice, confidence: conf, correct: g.correct, points: g.points });
+  lap("insert");
 
   return {
     correct: g.correct, choice, answer: q.answer, explain: q.explain, points: g.points, score: s.score + g.points,

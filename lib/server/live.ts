@@ -1,5 +1,6 @@
 import "server-only";
 import { randomBytes, randomInt, timingSafeEqual } from "node:crypto";
+import { after } from "next/server";
 import { TIME_LIMIT } from "../constants";
 import { gradeAnswer } from "../grading";
 import { TEAM_NAMES, type LiveRow, type LiveState, type TeamReveal, type TeamRow } from "../liveTypes";
@@ -124,9 +125,12 @@ export async function hostRoom(roomId: string, userId: string | null): Promise<R
 
 export async function playerAuth(playerId: string, token: string): Promise<{ player: Player; room: Room }> {
   if (!/^[0-9a-f-]{36}$/i.test(playerId)) throw new HttpError(400, "ข้อมูลผู้เล่นไม่ถูกต้อง");
-  const { data } = await db().from("live_players").select("*").eq("id", playerId).maybeSingle();
+  // player and their room in one round trip (this runs on every poll and every answer)
+  const { data } = await db().from("live_players").select("*, room:live_rooms(*)").eq("id", playerId).maybeSingle();
   if (!data || !sameToken(String(data.token), String(token ?? ""))) throw new HttpError(404, "ไม่พบผู้เล่นนี้ เข้าห้องใหม่อีกครั้ง");
-  return { player: data as Player, room: await roomById(data.room_id) };
+  const { room, ...player } = data as Player & { room: Room | null };
+  if (!room) throw new HttpError(404, "ไม่พบห้องสดนี้");
+  return { player: player as Player, room };
 }
 
 // ───────────── teams ─────────────
@@ -202,11 +206,20 @@ async function autoReveal(room: Room): Promise<Room> {
 
 export async function getState(input: Room, viewer: { host: true } | { player: Player }): Promise<LiveState> {
   const room = await autoReveal(input);
-  const players = await roster(room.id);
   const qid = room.question_ids[room.current_index];
   const team = !!room.team_mode;
+  const wantAnswers = !!qid && (room.state === "question" || room.state === "reveal");
+  // everything below is independent, so fetch it in one parallel round trip
+  const [players, title, answerRes, qmap] = await Promise.all([
+    roster(room.id),
+    quizTitle(room.quiz_id),
+    wantAnswers
+      ? db().from("live_answers").select("player_id, question_id, choice, correct, points, reason, answered_at").eq("room_id", room.id).eq("question_id", qid)
+      : Promise.resolve({ data: [] as AnswerRow[] }),
+    qid && room.state !== "lobby" && room.state !== "ended" ? questionsById([qid]) : Promise.resolve(new Map<string, Question>()),
+  ]);
   const s: LiveState = {
-    pin: room.pin, title: await quizTitle(room.quiz_id), state: room.state,
+    pin: room.pin, title, state: room.state,
     index: room.current_index, total: room.question_ids.length || 0, timeLimit: TIME_LIMIT,
     serverNow: Date.now(), startedAt: ms(room.question_started_at), playerCount: players.length, teamMode: team,
   };
@@ -216,13 +229,9 @@ export async function getState(input: Room, viewer: { host: true } | { player: P
 
   const board = (n: number): LiveRow[] => players.slice(0, n).map((p) => ({ name: p.nickname, score: p.score, me: p.id === meP?.id }));
 
-  let answers: AnswerRow[] = [];
-  if (qid && (room.state === "question" || room.state === "reveal")) {
-    const { data } = await db().from("live_answers").select("player_id, question_id, choice, correct, points, reason, answered_at").eq("room_id", room.id).eq("question_id", qid);
-    answers = (data ?? []) as AnswerRow[];
-    s.answeredCount = answers.length;
-  }
-  const q = qid ? (await questionsById([qid])).get(qid) : undefined;
+  const answers = (answerRes.data ?? []) as AnswerRow[];
+  if (wantAnswers) s.answeredCount = answers.length;
+  const q = qid ? qmap.get(qid) : undefined;
   if (q && room.state === "question") s.question = { id: q.id!, topic: q.topic, level: q.level, q: q.q, choices: q.choices, image: q.image ?? null };
   if (q && room.state === "reveal") {
     const distribution = [0, 0, 0, 0];
@@ -306,10 +315,13 @@ export async function answerLive(playerId: string, token: string, rawChoice: num
   } else if (error) {
     throw new HttpError(500, "ส่งคำตอบไม่สำเร็จ");
   }
-  // score = sum of this player's answers (recomputed, so it can never drift)
-  const { data: sum } = await db().from("live_answers").select("points").eq("player_id", player.id);
-  await db().from("live_players").update({ score: (sum ?? []).reduce((t, r) => t + r.points, 0) }).eq("id", player.id);
-  await nudge(room.pin, "answered");
+  // after the reply is sent: score = sum of this player's answers (recomputed, so it can never drift),
+  // then tell the room. Nobody sees scores before the reveal, so the student need not wait for this.
+  after(async () => {
+    const { data: sum } = await db().from("live_answers").select("points").eq("player_id", player.id);
+    await db().from("live_players").update({ score: (sum ?? []).reduce((t, r) => t + r.points, 0) }).eq("id", player.id);
+    await nudge(room.pin, "answered");
+  });
   return { ok: true }; // correctness stays hidden until the host reveals
 }
 

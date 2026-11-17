@@ -22,5 +22,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
+  // hot paths (polled every 2-3 s or hit on every answer) skip the session refresh: they identify players by token
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/live/state|api/live/answer|api/game/answer|api/game/next|api/featured|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)"],
 };

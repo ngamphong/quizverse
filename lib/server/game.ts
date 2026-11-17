@@ -25,40 +25,49 @@ interface Session {
 
 const toClient = (q: Question): ClientQuestion => ({ id: q.id!, topic: q.topic, level: q.level, q: q.q, choices: q.choices, image: q.image ?? null });
 
-async function loadPool(quizId: string): Promise<Question[]> {
-  const { data, error } = await selectQuestions<Question>((cols) =>
-    supabaseAdmin().from("questions").select(cols).eq("quiz_id", quizId).order("position").returns<Question[]>());
-  if (error) throw new HttpError(500, "โหลดคำถามไม่สำเร็จ");
-  return (data ?? []).map((r) => ({ ...r, qid: r.id }) as Question);
-}
+type PoolRow = Question & { position: number };
+const toPool = (rows: PoolRow[] | null | undefined): Question[] =>
+  [...(rows ?? [])].sort((x, y) => x.position - y.position).map((r) => ({ ...r, qid: r.id }) as Question);
 
-/** Just the question being answered (cheaper than the whole pool). */
-async function loadQuestion(quizId: string, id: string): Promise<Question | null> {
-  const { data } = await selectQuestions<Question>((cols) =>
-    supabaseAdmin().from("questions").select(cols).eq("quiz_id", quizId).eq("id", id).limit(1).returns<Question[]>());
-  const r = data?.[0];
-  return r ? ({ ...r, qid: r.id } as Question) : null;
-}
-
-async function loadSession(id: string, token: string): Promise<Session> {
-  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new HttpError(400, "รหัสเกมไม่ถูกต้อง");
-  const { data } = await supabaseAdmin().from("game_sessions").select("*").eq("id", id).maybeSingle();
+function checkToken(data: { token?: unknown } | null, token: string) {
   const a = Buffer.from(String(data?.token ?? "")), b = Buffer.from(String(token ?? ""));
   if (!data || a.length !== b.length || !timingSafeEqual(a, b)) throw new HttpError(404, "ไม่พบเกมนี้ หรือเกมหมดอายุแล้ว");
-  return data as Session;
+}
+
+/**
+ * The session and its quiz's questions in ONE database round trip
+ * (each trip to the database costs ~100 ms, so this matters on every answer).
+ */
+async function loadSessionWithPool(id: string, token: string): Promise<{ s: Session; pool: Question[] }> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new HttpError(400, "รหัสเกมไม่ถูกต้อง");
+  type Row = Session & { quiz: { questions: PoolRow[] } | null };
+  const { data, error } = await selectQuestions<Row>((cols) =>
+    supabaseAdmin().from("game_sessions").select(`*, quiz:quizzes(questions(${cols}, position))`).eq("id", id).limit(1).returns<Row[]>());
+  if (error) throw new HttpError(500, "โหลดเกมไม่สำเร็จ");
+  const row = data?.[0] ?? null;
+  checkToken(row, token);
+  const { quiz, ...s } = row!;
+  return { s: s as Session, pool: toPool(quiz?.questions) };
 }
 
 export async function startGame(pin: string, nickname: string, userId: string | null) {
   if (!/^\d{6}$/.test(pin)) throw new HttpError(400, "รหัสห้องต้องเป็นตัวเลข 6 หลัก");
   const db = supabaseAdmin();
-  const { data: quiz } = await db.from("quizzes").select("id, title, pin").eq("pin", pin).maybeSingle();
+  // quiz + its questions in one query, and the player's profile at the same time
+  type QuizRow = { id: string; title: string; pin: string; questions: PoolRow[] };
+  const [{ data: quizzes }, profile] = await Promise.all([
+    selectQuestions<QuizRow>((cols) =>
+      db.from("quizzes").select(`id, title, pin, questions(${cols}, position)`).eq("pin", pin).limit(1).returns<QuizRow[]>()),
+    userId ? loadProfileRow(userId) : Promise.resolve(null),
+  ]);
+  const quiz = quizzes?.[0];
   if (!quiz) throw new HttpError(404, "ไม่พบห้องนี้ ตรวจสอบ PIN กับผู้สอนอีกครั้ง");
 
   let name = nickname.trim().slice(0, 20);
-  if (userId) name = (await loadProfileRow(userId))?.display_name?.slice(0, 20) || name;
+  if (userId) name = profile?.display_name?.slice(0, 20) || name;
   if (!name) throw new HttpError(400, "กรุณาตั้งชื่อผู้เล่น");
 
-  const pool = await loadPool(quiz.id);
+  const pool = toPool(quiz.questions);
   if (!pool.length) throw new HttpError(409, "ห้องนี้ยังไม่มีคำถาม");
   const total = Math.min(ROUNDS, pool.length);
   const first = pickQuestion(pool, [], 2, false);
@@ -74,17 +83,17 @@ export async function startGame(pin: string, nickname: string, userId: string | 
 }
 
 export async function answerQuestion(id: string, token: string, rawChoice: number, rawConf: string, timing: string[] = []) {
+  const now = Date.now(); // time the answer arrived (database latency must not eat the player's time)
   let t = performance.now();
   const lap = (name: string) => { const n = performance.now(); timing.push(`${name};dur=${(n - t).toFixed(0)}`); t = n; };
-  const s = await loadSession(id, token);
-  lap("session");
+  const { s, pool } = await loadSessionWithPool(id, token);
+  lap("load");
   if (s.finished_at) throw new HttpError(409, "เกมนี้จบแล้ว");
   if (s.current_answered || !s.current_question || !s.current_started_at) throw new HttpError(409, "ตอบข้อนี้ไปแล้ว");
-  const q = await loadQuestion(s.quiz_id, s.current_question);
+  const q = pool.find((x) => x.id === s.current_question);
   if (!q) throw new HttpError(409, "คำถามข้อนี้ถูกลบไปแล้ว");
-  lap("question");
 
-  const elapsed = (Date.now() - Date.parse(s.current_started_at)) / 1000;
+  const elapsed = (now - Date.parse(s.current_started_at)) / 1000;
   let choice = Number.isInteger(rawChoice) && rawChoice >= 0 && rawChoice <= 3 ? rawChoice : -1;
   if (elapsed > TIME_LIMIT + GRACE_S) choice = -1; // answered after time ran out
   const timeLeft = Math.max(0, TIME_LIMIT - elapsed);
@@ -93,14 +102,19 @@ export async function answerQuestion(id: string, token: string, rawChoice: numbe
   const adj = adjustLevel(s.level, s.streak, g.correct);
 
   const db = supabaseAdmin();
-  // only the first answer for this question counts (guards against double clicks / replays)
-  const { data: upd } = await db.from("game_sessions")
-    .update({ current_answered: true, score: s.score + g.points, level: adj.level, prev_level: s.level, streak: adj.streak })
-    .eq("id", s.id).eq("current_answered", false).select("id");
-  if (!upd?.length) throw new HttpError(409, "ตอบข้อนี้ไปแล้ว");
-  lap("update");
-  await db.from("answers").insert({ session_id: s.id, question_id: q.id, choice, confidence: conf, correct: g.correct, points: g.points });
-  lap("insert");
+  // save the score and the answer row in parallel (one round trip). Only the first answer for this
+  // question counts: if the conditional update matched nothing (double click / replay), undo the row.
+  const [{ data: upd }, { data: ins }] = await Promise.all([
+    db.from("game_sessions")
+      .update({ current_answered: true, score: s.score + g.points, level: adj.level, prev_level: s.level, streak: adj.streak })
+      .eq("id", s.id).eq("current_answered", false).select("id"),
+    db.from("answers").insert({ session_id: s.id, question_id: q.id, choice, confidence: conf, correct: g.correct, points: g.points }).select("id"),
+  ]);
+  if (!upd?.length) {
+    if (ins?.[0]) await db.from("answers").delete().eq("id", ins[0].id);
+    throw new HttpError(409, "ตอบข้อนี้ไปแล้ว");
+  }
+  lap("save");
 
   return {
     correct: g.correct, choice, answer: q.answer, explain: q.explain, points: g.points, score: s.score + g.points,
@@ -110,15 +124,14 @@ export async function answerQuestion(id: string, token: string, rawChoice: numbe
 }
 
 export async function nextQuestion(id: string, token: string) {
-  const s = await loadSession(id, token);
+  const { s, pool } = await loadSessionWithPool(id, token);
   if (s.finished_at && s.result) return { done: true as const, result: s.result };
   if (!s.current_answered) throw new HttpError(409, "ยังไม่ได้ตอบข้อปัจจุบัน");
-  if (s.asked.length >= s.total) return { done: true as const, result: await finish(s) };
+  if (s.asked.length >= s.total) return { done: true as const, result: await finish(s, pool) };
 
-  const pool = await loadPool(s.quiz_id);
   const asked = s.asked.map((qid) => pool.find((p) => p.id === qid)).filter(Boolean) as Question[];
   const q = pickQuestion(pool, asked, s.level, false);
-  if (!q) return { done: true as const, result: await finish(s) };
+  if (!q) return { done: true as const, result: await finish(s, pool) };
 
   const { data: upd } = await supabaseAdmin().from("game_sessions").update({
     asked: [...s.asked, q.id], current_question: q.id, current_started_at: new Date().toISOString(),
@@ -155,16 +168,18 @@ async function leaderboard(s: Session): Promise<{ players: Player[]; playerCount
   return { players, playerCount: all.length };
 }
 
-async function finish(s: Session): Promise<GameResult> {
+async function finish(s: Session, pool: Question[]): Promise<GameResult> {
   const db = supabaseAdmin();
-  const pool = await loadPool(s.quiz_id);
-  const { data: rows } = await db.from("answers").select("question_id, choice, confidence, correct, points").eq("session_id", s.id).order("id");
+  const [{ data: rows }, board] = await Promise.all([
+    db.from("answers").select("question_id, choice, confidence, correct, points").eq("session_id", s.id).order("id"),
+    leaderboard(s),
+  ]);
   const answers: AnswerRecord[] = (rows ?? []).flatMap((r) => {
     const q = pool.find((p) => p.id === r.question_id);
     return q ? [{ q, choice: r.choice, correct: r.correct, points: r.points, conf: r.confidence as Conf }] : [];
   });
 
-  const { players, playerCount } = await leaderboard(s);
+  const { players, playerCount } = board;
   const result: GameResult = { name: s.nickname, score: s.score, total: s.total, maxLevel: s.max_level, answers, players, playerCount };
 
   // finish exactly once; only the call that flips finished_at updates Learning DNA

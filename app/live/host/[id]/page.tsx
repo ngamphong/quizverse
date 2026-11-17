@@ -19,9 +19,42 @@ export default function HostPage() {
   const [origin, setOrigin] = useState("");
   const autoRevealed = useRef(-1);
 
-  useEffect(() => setOrigin(location.origin), []);
+  // after a reveal: go to the next question by itself after a countdown (can be switched off)
+  const [autoNext, setAutoNextState] = useState(true);
+  const [autoSecs, setAutoSecsState] = useState(10);
+  const revealAt = useRef<{ index: number; at: number } | null>(null);
+  const autoNexted = useRef(-1);
+
+  useEffect(() => {
+    setOrigin(location.origin);
+    try {
+      if (localStorage.getItem("qv_auto_next") === "off") setAutoNextState(false);
+      const n = Number(localStorage.getItem("qv_auto_secs"));
+      if ([5, 10, 15, 20].includes(n)) setAutoSecsState(n);
+    } catch { /* private mode */ }
+  }, []);
   useEffect(() => { if (s?.pin) setPin(s.pin); }, [s?.pin]);
-  useTicker(s?.state === "question");
+  useTicker(s?.state === "question" || (s?.state === "reveal" && autoNext));
+
+  const setAutoNext = (on: boolean) => {
+    setAutoNextState(on);
+    if (on && s?.state === "reveal") revealAt.current = { index: s.index, at: Date.now() }; // restart the countdown
+    try { localStorage.setItem("qv_auto_next", on ? "on" : "off"); } catch { /* ignore */ }
+  };
+  const setAutoSecs = (n: number) => {
+    setAutoSecsState(n);
+    try { localStorage.setItem("qv_auto_secs", String(n)); } catch { /* ignore */ }
+  };
+
+  if (s?.state === "reveal" && revealAt.current?.index !== s.index) revealAt.current = { index: s.index, at: Date.now() };
+  const nextIn = s?.state === "reveal" && revealAt.current
+    ? Math.max(0, Math.ceil(autoSecs - (Date.now() - revealAt.current.at) / 1000)) : autoSecs;
+  useEffect(() => {
+    if (!s || s.state !== "reveal" || !autoNext || nextIn > 0 || busy || autoNexted.current === s.index) return;
+    autoNexted.current = s.index;
+    act("next");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s, autoNext, nextIn, busy]);
 
   async function act(action: "start" | "reveal" | "next" | "end") {
     setBusy(true);
@@ -138,9 +171,30 @@ export default function HostPage() {
             ) : (
               <><h3 style={{ fontSize: 16 }}>อันดับ 5 คนแรก</h3><Leaderboard rows={s.reveal.leaderboard} /></>
             )}
-            <button className="btn btn-primary" disabled={busy} onClick={() => act("next")}>
+            <button className="btn btn-primary" disabled={busy} onClick={() => { autoNexted.current = s.index; act("next"); }}>
               {s.index + 1 >= s.total ? "ดูผลรวม →" : "ข้อต่อไป →"}
+              {autoNext && <span className="num" style={{ opacity: 0.8, fontWeight: 500 }}> (อัตโนมัติใน {nextIn} วิ)</span>}
             </button>
+            {autoNext && (
+              <div className="progress" aria-hidden="true">
+                <i style={{ width: `${(nextIn / autoSecs) * 100}%`, transition: "width .25s linear" }} />
+              </div>
+            )}
+            <div className="row" style={{ gap: 8, justifyContent: "space-between" }}>
+              <label className="row small" style={{ gap: 6, cursor: "pointer" }}>
+                <input type="checkbox" checked={autoNext} onChange={(e) => setAutoNext(e.target.checked)} />
+                ไปข้อต่อไปอัตโนมัติ
+              </label>
+              <span className="row small muted" style={{ gap: 4 }}>
+                หลังเฉลย
+                {[5, 10, 15, 20].map((n) => (
+                  <button key={n} type="button" className={"btn btn-sm " + (autoSecs === n ? "btn-soft" : "btn-ghost")}
+                    style={{ padding: "4px 10px", minWidth: 0 }} onClick={() => { setAutoSecs(n); if (autoNext) revealAt.current = { index: s.index, at: Date.now() }; }}
+                    aria-pressed={autoSecs === n}>{n} วิ</button>
+                ))}
+              </span>
+            </div>
+            {!autoNext && <p className="small muted">ปิดอยู่: กด &quot;ข้อต่อไป&quot; เองเมื่ออธิบายเสร็จ</p>}
           </div>
         </div>
       )}
